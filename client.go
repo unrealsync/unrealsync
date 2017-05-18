@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/Md-Cake/fswatcher"
 )
 
 type Client struct {
@@ -51,9 +52,6 @@ func copyUnrealsyncBinaries(uname []string, settings Settings) {
 	ostypeLower := strings.ToLower(uname[0])
 
 	names := []string{"/unrealsync-" + ostypeLower + "-" + uname[1]}
-	if ostypeLower == "darwin" && false {
-		names = append(names, "/notify-"+ostypeLower)
-	}
 
 	for _, name := range names {
 		args := sshOptions(settings)
@@ -197,33 +195,12 @@ func pingReplyThread(stdout io.ReadCloser, settings Settings, stream chan BufBlo
 	}
 }
 
-func startWatcher() *bufio.Reader {
-	notifyPath := unrealsyncDir + "/notify-darwin"
-
-	cmd := exec.Command(notifyPath, sourceDir)
-	debugLn(notifyPath, sourceDir)
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		fatalLn("Cannot get stdout pipe: ", err.Error())
-	}
-
-	if err = cmd.Start(); err != nil {
-		panic("Cannot start notify: " + err.Error())
-	}
-
-	return bufio.NewReader(stdout)
-}
-
-func waitWatcherReady(r *bufio.Reader) {
+func waitWatcherReady(fschanges chan string) {
 	debugLn("Waiting for watcher")
 	for {
-		lineBytes, _, err := r.ReadLine()
-		debugLn("got ", string(lineBytes), " from Watcher")
-		if err != nil {
-			fatalLn("Could not read line from notify utility: " + err.Error())
-		}
-		if string(lineBytes) == LOCAL_WATCHER_READY {
+		change := <-fschanges
+		debugLn("got ", string(change), " from Watcher")
+		if change == fswatcher.LOCAL_WATCHER_READY {
 			progressLn("Watcher ready")
 			break
 		}
@@ -400,7 +377,9 @@ func aggregateDirs(dirschan chan string) {
 	for {
 		select {
 		case dir := <-dirschan:
-			dirs[dir] = true
+			if dir, err := getPathToSync(dir); err == nil {
+				dirs[dir] = true
+			}
 
 		case <-tick:
 			if len(dirs) == 0 {
@@ -415,6 +394,33 @@ func aggregateDirs(dirschan chan string) {
 			dirs = make(map[string]bool)
 		}
 	}
+}
+
+func getPathToSync(path string) (string, error) {
+	var err error
+	if filepath.IsAbs(path) {
+		path, err = filepath.Rel(sourceDir, path)
+		if err != nil {
+			progressLn("Cannot compute relative path: ", err)
+			return "", err
+		}
+	}
+	stat, err := os.Lstat(path)
+
+	if err != nil {
+		if !os.IsNotExist(err) {
+			progressLn("Stat failed for ", path, ": ", err.Error())
+			return "", err
+		}
+
+		path = filepath.Dir(path)
+	} else if !stat.IsDir() {
+		path = filepath.Dir(path)
+	}
+	if strings.HasPrefix(path, ".unrealsync") {
+		return "", errors.New(".unrealsync folder change")
+	}
+	return path, nil
 }
 
 func syncDir(dir string, recursive, sendChanges bool) {
@@ -506,42 +512,6 @@ func pingThread() {
 	}
 }
 
-func readWatcher(r *bufio.Reader, dirschan chan string) {
-	for {
-		lineBytes, _, err := r.ReadLine()
-		if err != nil {
-			fatalLn("Could not read line from notify utility: " + err.Error())
-		}
-
-		path := string(lineBytes)
-		if filepath.IsAbs(path) {
-			path, err = filepath.Rel(sourceDir, path)
-			if err != nil {
-				progressLn("Cannot compute relative path: ", err)
-				continue
-			}
-		}
-
-		stat, err := os.Lstat(path)
-
-		if err != nil {
-			if !os.IsNotExist(err) {
-				progressLn("Stat failed for ", path, ": ", err.Error())
-				continue
-			}
-
-			path = filepath.Dir(path)
-		} else if !stat.IsDir() {
-			path = filepath.Dir(path)
-		}
-		if strings.HasPrefix(path, ".unrealsync") {
-			continue
-		}
-
-		dirschan <- path
-	}
-}
-
 func doClient() {
 	servers := parseConfig()
 
@@ -552,15 +522,14 @@ func doClient() {
 	}
 	go pingThread()
 
-	r := startWatcher()
+	dirschan := make(chan string, 10000)
+	go fswatcher.RunWatcher(sourceDir, dirschan)
+	waitWatcherReady(dirschan)
 
-	waitWatcherReady(r)
 	syncDir(".", true, false)
 	go printStatusThread()
 
 	// read watcher
 	progressLn("Entering watcher loop")
-	dirschan := make(chan string, 10000)
-	go readWatcher(r, dirschan)
 	aggregateDirs(dirschan)
 }

@@ -51,7 +51,7 @@ func writeToOutLog(action string, buf []byte) {
 	if outLogPos > LOG_MAX_SIZE {
 		for _, actual := range outLogReadActual {
 			if !actual {
-				progressLn("could not reopen log, not all readers are reading from actual")
+				debugLn("could not reopen log, not all readers are reading from actual")
 				return
 			}
 		}

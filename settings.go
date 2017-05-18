@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/bo0rsh201/unrealsync/list"
-	ini "github.com/glacjay/goini"
 	"strconv"
 	"strings"
+
+	"github.com/bo0rsh201/unrealsync/list"
+	ini "github.com/glacjay/goini"
 )
 
 const GENERAL_SECTION = "general_settings"
