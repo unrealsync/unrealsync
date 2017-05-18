@@ -47,7 +47,7 @@ func writeToOutLog(action string, buf []byte) {
 	}
 
 	outLogPos, err = outLogWriteFp.Seek(0, os.SEEK_CUR)
-	progressLn("outlogpos:", outLogPos, " after action:", action)
+	debugLn("outlogpos:", outLogPos, " after action:", action)
 	if outLogPos > LOG_MAX_SIZE {
 		for _, actual := range outLogReadActual {
 			if !actual {
@@ -64,12 +64,14 @@ func writeToOutLog(action string, buf []byte) {
 func createOutLog() {
 	if outLogWriteFp != nil {
 		outLogWriteFp.Close()
+		os.Remove(REPO_LOG_FILENAME)
 	}
 	var err error
 	outLogWriteFp, err = os.OpenFile(REPO_LOG_FILENAME, os.O_APPEND|os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0666)
 	if err != nil {
 		fatalLn("Cannot open ", REPO_LOG_FILENAME, ": ", err.Error())
 	}
+	outLogWriteFp.Name()
 	for hostname, _ := range outLogReadActual {
 		// invalidate readers
 		outLogReadActual[hostname] = false
@@ -77,38 +79,52 @@ func createOutLog() {
 	outLogPos = 0
 }
 
-func openOutLogForRead(hostname string) (err error) {
+func openOutLogForRead(hostname string, continuation bool) (err error) {
 	outLogMutex.Lock()
 	defer outLogMutex.Unlock()
 	fp, ok := outLogReadFps[hostname]
 	if ok {
+		progressLn("Closing old log fp for ", hostname)
 		err = fp.Close()
 		if err != nil {
 			return
 		}
 	}
+	progressLn("Opening log for ", hostname)
 	fp, err = os.Open(REPO_LOG_FILENAME)
 	if err != nil {
 		return
 	}
 	outLogReadFps[hostname] = fp
-	_, err = fp.Seek(outLogPos, os.SEEK_SET)
-	if err != nil {
-		return
+
+	if continuation {
+		_, err = fp.Seek(outLogPos, os.SEEK_SET)
+		if err != nil {
+			return
+		}
+		outLogReadPos[hostname] = outLogPos
+	} else {
+		outLogReadPos[hostname] = 0
 	}
-	outLogReadPos[hostname] = outLogPos
 	outLogReadActual[hostname] = true
 	return
 }
 
-func doSendChanges(stream chan BufBlocker, hostname string, stopChan chan bool) {
+func doSendChanges(stream chan BufBlocker, hostname string, stopChan chan bool, errorCh chan error) {
 	var err error
 	buf := make([]byte, MAX_DIFF_SIZE+20) // MAX_DIFF_SIZE limits only diff itself, so extra action+len required, each 10 bytes
 	var pos int64
 	var bufLen int
 	bufBlocker := BufBlocker{buf: buf, sent: make(chan bool)}
 
+doSendChangesLoop:
 	for {
+		select {
+		case <-stopChan:
+			progressLn("Got stop sendChanges")
+			break doSendChangesLoop
+		default:
+		}
 		outLogMutex.Lock()
 		localOutLogPos := outLogPos
 		localActual := outLogReadActual[hostname]
@@ -123,19 +139,22 @@ func doSendChanges(stream chan BufBlocker, hostname string, stopChan chan bool) 
 
 		bufLen, err = readLogEntry(fp, buf)
 		if err == io.EOF {
-			err = openOutLogForRead(hostname)
+			err = openOutLogForRead(hostname, false)
 			if err != nil {
-				panic(err)
+				errorCh <- err
+				break
 			}
 			continue
 		}
 		if err != nil {
-			panic(err)
+			errorCh <- err
+			break
 		}
 
 		pos, err = fp.Seek(0, os.SEEK_CUR)
 		if err != nil {
-			panic(err)
+			errorCh <- err
+			break
 		}
 		outLogMutex.Lock()
 		outLogReadPos[hostname] = pos
@@ -146,9 +165,15 @@ func doSendChanges(stream chan BufBlocker, hostname string, stopChan chan bool) 
 		select {
 		case stream <- bufBlocker:
 		case <-stopChan:
-			break
+			progressLn("Got stop sendChanges2")
+			break doSendChangesLoop
 		}
-		<-bufBlocker.sent
+		select {
+		case <-bufBlocker.sent:
+		case <-stopChan:
+			progressLn("Got stop sendChanges3")
+			break doSendChangesLoop
+		}
 	}
 	close(stream)
 }
@@ -172,6 +197,7 @@ func printStatusThread() {
 		runtime.ReadMemStats(mem)
 		if len(statuses) > 0 {
 			progress("Pending diffs: ", strings.Join(statuses, "; "))
+			prevStatusesOk = false
 		} else if !prevStatusesOk {
 			progress("All diffs were sent mem.Sys:", formatLength(int(mem.Sys)))
 			prevStatusesOk = true

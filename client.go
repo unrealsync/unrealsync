@@ -33,7 +33,7 @@ func initialServerSync(hostname string, settings Settings) (err error) {
 		args = append(args, "--exclude="+dir)
 	}
 
-	err = openOutLogForRead(hostname)
+	err = openOutLogForRead(hostname, true)
 	if err != nil {
 		return
 	}
@@ -82,8 +82,12 @@ func startServer(hostname string, settings Settings) {
 			if cmd != nil {
 				err := cmd.Process.Kill()
 				if err != nil {
-					progressLn("Could not kill ssh process:" + err.Error())
+					progressLn("Could not kill ssh process for " + hostname + ":" + err.Error())
 					// no action
+				}
+				err = cmd.Wait()
+				if err != nil {
+					progressLn("Could not wait ssh process for " + hostname + ":" + err.Error())
 				}
 			}
 
@@ -102,19 +106,18 @@ func startServer(hostname string, settings Settings) {
 
 	stopChan := make(chan bool)
 	stream := make(chan BufBlocker)
+	errorCh := make(chan error)
 	// receive from singlestdinwriter (stream) and send into ssh stdin
-	// panics on error
-	go singleStdinWriter(stream, stdin)
+	go singleStdinWriter(stream, stdin, errorCh)
 	// read log and send into ssh stdin via singlestdinwriter (stream)
 	// stops if stopChan closes and closes stream
-	// panics on error
-	go doSendChanges(stream, hostname, stopChan)
+	go doSendChanges(stream, hostname, stopChan, errorCh)
 	// read ssh stdout and send into ssh stdin via singlestdinwriter (stream)
-	// panics on error
-	go pingReplyThread(stdout, settings, stream)
+	go pingReplyThread(stdout, settings, stream, errorCh)
 
-	cmd.Wait()
+	err := <-errorCh
 	close(stopChan)
+	panic(err)
 }
 
 func launchUnrealsyncAt(settings Settings) (*exec.Cmd, io.WriteCloser, io.ReadCloser) {
@@ -166,25 +169,27 @@ func createDirectoriesAt(hostname string, settings Settings) []string {
 	return uname
 }
 
-func singleStdinWriter(stream chan BufBlocker, stdin io.WriteCloser) {
+func singleStdinWriter(stream chan BufBlocker, stdin io.WriteCloser, errorCh chan error) {
 	for {
 		bufBlocker := <-stream
 		_, err := stdin.Write(bufBlocker.buf)
 		bufBlocker.sent <- true
 		if err != nil {
-			panic(err)
+			errorCh <- err
+			break
 		}
 	}
 }
 
-func pingReplyThread(stdout io.ReadCloser, settings Settings, stream chan BufBlocker) {
+func pingReplyThread(stdout io.ReadCloser, settings Settings, stream chan BufBlocker, errorCh chan error) {
 	bufBlocker := BufBlocker{buf: make([]byte, 20), sent: make(chan bool)}
 	bufBlocker.buf = []byte(ACTION_PONG + fmt.Sprintf("%10d", 0))
 	buf := make([]byte, 10)
 	for {
 		read_bytes, err := io.ReadFull(stdout, buf)
 		if err != nil {
-			panic(errors.New("Could not read from server:" + hostname + " err:" + err.Error()))
+			errorCh <- errors.New("Could not read from server:" + hostname + " err:" + err.Error())
+			break
 		}
 		debugLn("Read ", read_bytes, " from ", settings.host, " ", buf)
 		stream <- bufBlocker

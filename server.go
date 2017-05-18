@@ -152,7 +152,7 @@ func applyThread(inStream io.ReadCloser) {
 
 		actionStr := string(action)
 		runtime.ReadMemStats(mem)
-		debugLn("Received ", "'"+actionStr+"' mem.Sys:", formatLength(int(mem.Sys)))
+		progressLn("Received ", "'"+actionStr+"' mem.Sys:", formatLength(int(mem.Sys)))
 		rcvchan <- true
 
 		buf := readResponse(inStream)
@@ -264,7 +264,7 @@ func processBigAbort(buf []byte, bigFps map[string]BigFile) {
 func applyRemoteDiff(buf []byte) {
 	progressLn("Received diff, length ", formatLength(len(buf)))
 	applyDiff(buf)
-	progressLn("Applied diff, length ", formatLength(len(buf)))
+	progressLn("Applied diff")
 }
 
 func writeContents(file string, unrealStat UnrealStat, contents []byte) {
