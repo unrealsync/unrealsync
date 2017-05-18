@@ -54,13 +54,14 @@ func (r *MultipleStringFlag) Set(value string) (err error) {
 }
 
 var (
-	sourceDir     string
-	unrealsyncDir string
-	rcvchan       = make(chan bool)
-	isServer      = false
-	isDebug       = false
-	hostname      = ""
-	excludesFlag  MultipleStringFlag
+	sourceDir        string
+	unrealsyncDir    string
+	rcvchan          = make(chan bool)
+	isServer         = false
+	isDebug          = false
+	hostname         = ""
+	excludesFlag     MultipleStringFlag
+	forceServersFlag = ""
 )
 
 func init() {
@@ -68,6 +69,7 @@ func init() {
 	flag.BoolVar(&isServer, "server", false, "Internal parameter used on remote side")
 	flag.StringVar(&hostname, "hostname", "", "Internal parameter used on remote side")
 	flag.Var(&excludesFlag, "excludes", "Internal parameter used on remote side")
+	flag.StringVar(&forceServersFlag, "servers", "", "Perform sync only for specified servers")
 }
 
 func initUnrealsyncDir() string {

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"github.com/bo0rsh201/unrealsync/list"
 	ini "github.com/glacjay/goini"
 	"strconv"
 	"strings"
@@ -91,6 +93,11 @@ func parseConfig() (servers map[string]Settings) {
 		excludes = parseExcludes(general["exclude"])
 	}
 
+	forceServers := general["servers"]
+	if forceServersFlag != "" {
+		forceServers = forceServersFlag
+	}
+
 	delete(dict, GENERAL_SECTION)
 
 	for key, serverSettings := range dict {
@@ -111,7 +118,28 @@ func parseConfig() (servers map[string]Settings) {
 				serverSettings[generalKey] = generalValue
 			}
 		}
-		servers[key] = parseServerSettings(key, serverSettings, excludes)
+		var keys []string
+		keys, err = list.Expand(key)
+		if err != nil {
+			fatalLn(fmt.Sprintf(
+				"Server name pattern '%s' parse error [config]: %s", key, err,
+			))
+		}
+		for _, k := range keys {
+			if forceServers != "" {
+				var res bool
+				res, err = list.Glob(forceServers, k)
+				if err != nil {
+					fatalLn(fmt.Sprintf(
+						"Server name pattern '%s' parse error [override]: %s", key, err,
+					))
+				}
+				if !res {
+					continue
+				}
+			}
+			servers[k] = parseServerSettings(k, serverSettings, excludes)
+		}
 	}
 	return
 }
