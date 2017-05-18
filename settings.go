@@ -13,11 +13,13 @@ const GENERAL_SECTION = "general_settings"
 type Settings struct {
 	excludes map[string]bool
 	username string
+	sudouser string
 	host     string
 	port     int
 
-	dir string
-	os  string
+	dir           string
+	remoteBinPath string
+	os            string
 
 	compression bool
 }
@@ -56,9 +58,11 @@ func parseServerSettings(section string, serverSettings map[string]string, exclu
 	return Settings{
 		localExcludes,
 		serverSettings["username"],
+		serverSettings["sudouser"],
 		host,
 		port,
 		serverSettings["dir"],
+		serverSettings["remote-bin-path"],
 		serverSettings["os"],
 		compression,
 	}

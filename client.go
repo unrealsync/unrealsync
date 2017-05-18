@@ -37,6 +37,9 @@ func initialServerSync(hostname string, settings Settings) (err error) {
 	if err != nil {
 		return
 	}
+	if settings.sudouser != "" {
+		args = append(args, "--rsync-path", "sudo -u "+settings.sudouser+" rsync")
+	}
 
 	// TODO: escaping of remote dir
 	//"--delete-excluded",
@@ -101,7 +104,9 @@ func startServer(hostname string, settings Settings) {
 
 	initialServerSync(hostname, settings)
 	uname := createDirectoriesAt(hostname, settings)
-	copyUnrealsyncBinaries(uname, settings)
+	if settings.remoteBinPath == "" {
+		copyUnrealsyncBinaries(uname, settings)
+	}
 	cmd, stdin, stdout = launchUnrealsyncAt(settings)
 
 	stopChan := make(chan bool)
@@ -133,7 +138,17 @@ func launchUnrealsyncAt(settings Settings) (*exec.Cmd, io.WriteCloser, io.ReadCl
 		flags += " --excludes " + dir
 	}
 
-	args = append(args, settings.host, settings.dir+"/.unrealsync/unrealsync "+flags+" "+settings.dir)
+	var unrealsyncBinaryPath string
+	if settings.remoteBinPath != "" {
+		unrealsyncBinaryPath = settings.remoteBinPath
+	} else {
+		unrealsyncBinaryPath = settings.dir + "/.unrealsync/unrealsync"
+	}
+	unrealsyncLaunchCmd := unrealsyncBinaryPath + " " + flags + " " + settings.dir
+	if settings.sudouser != "" {
+		unrealsyncLaunchCmd = "sudo -u " + settings.sudouser + " " + unrealsyncLaunchCmd
+	}
+	args = append(args, settings.host, unrealsyncLaunchCmd)
 
 	debugLn("ssh", args)
 	cmd := exec.Command("ssh", args...)
