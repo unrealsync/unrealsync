@@ -142,7 +142,7 @@ func main() {
 	}
 
 	unrealsyncDir = initUnrealsyncDir()
-	progressLn("Unrealsync is in directory ", unrealsyncDir)
+	debugLn("Unrealsync is in directory ", unrealsyncDir)
 
 	sourceDir, err = os.Getwd()
 	if err != nil {

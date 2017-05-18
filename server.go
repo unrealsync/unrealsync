@@ -152,7 +152,8 @@ func applyThread(inStream io.ReadCloser) {
 
 		actionStr := string(action)
 		runtime.ReadMemStats(mem)
-		progressLn("Received ", "'"+actionStr+"' mem.Sys:", formatLength(int(mem.Sys)))
+
+		debugLn("Received ", "'"+actionStr+"' mem.Sys:", formatLength(int(mem.Sys)))
 		rcvchan <- true
 
 		buf := readResponse(inStream)

@@ -370,14 +370,14 @@ func addToDiff(file string, stat *UnrealStat) {
 	return
 }
 
-func aggregateDirs(dirschan chan string) {
+func aggregateDirs(dirschan chan string, excludes map[string]bool) {
 	dirs := make(map[string]bool)
 	tick := time.Tick(DIR_AGGREGATE_INTERVAL)
 
 	for {
 		select {
 		case dir := <-dirschan:
-			if dir, err := getPathToSync(dir); err == nil {
+			if dir, err := getPathToSync(dir, excludes); err == nil {
 				dirs[dir] = true
 			}
 
@@ -396,7 +396,7 @@ func aggregateDirs(dirschan chan string) {
 	}
 }
 
-func getPathToSync(path string) (string, error) {
+func getPathToSync(path string, excludes map[string]bool) (string, error) {
 	var err error
 	if filepath.IsAbs(path) {
 		path, err = filepath.Rel(sourceDir, path)
@@ -417,10 +417,22 @@ func getPathToSync(path string) (string, error) {
 	} else if !stat.IsDir() {
 		path = filepath.Dir(path)
 	}
-	if strings.HasPrefix(path, ".unrealsync") {
-		return "", errors.New(".unrealsync folder change")
+	if pathIsGlobalExcluded(path, excludes) {
+		return "", errors.New("Excluded folder change")
 	}
 	return path, nil
+}
+
+func pathIsGlobalExcluded(path string, excludes map[string]bool) bool {
+	if strings.HasPrefix(path, ".unrealsync") {
+		return true
+	}
+	for exclude := range excludes {
+		if strings.HasPrefix(path, exclude) {
+			return true
+		}
+	}
+	return false
 }
 
 func syncDir(dir string, recursive, sendChanges bool) {
@@ -513,7 +525,7 @@ func pingThread() {
 }
 
 func doClient() {
-	servers := parseConfig()
+	servers, globalExcludes := parseConfig()
 
 	repo = make(map[string]map[string]*UnrealStat)
 
@@ -531,5 +543,5 @@ func doClient() {
 
 	// read watcher
 	progressLn("Entering watcher loop")
-	aggregateDirs(dirschan)
+	aggregateDirs(dirschan, globalExcludes)
 }
