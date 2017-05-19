@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/bo0rsh201/unrealsync/list"
-	ini "github.com/glacjay/goini"
 	"strconv"
 	"strings"
+
+	"github.com/bo0rsh201/unrealsync/list"
+	ini "github.com/glacjay/goini"
 )
 
 const GENERAL_SECTION = "general_settings"
@@ -79,7 +80,7 @@ func parseExcludes(excl string) map[string]bool {
 	return result
 }
 
-func parseConfig() (servers map[string]Settings) {
+func parseConfig() (servers map[string]Settings, excludes map[string]bool) {
 	servers = make(map[string]Settings)
 	dict, err := ini.Load(REPO_CLIENT_CONFIG)
 
@@ -92,7 +93,6 @@ func parseConfig() (servers map[string]Settings) {
 		fatalLn("Section " + GENERAL_SECTION + " of config file " + REPO_CLIENT_CONFIG + " is empty")
 	}
 
-	var excludes map[string]bool
 	if general["exclude"] != "" {
 		excludes = parseExcludes(general["exclude"])
 	}
