@@ -402,7 +402,7 @@ func aggregateDirs(dirschan chan string, excludes map[string]bool) {
 			}
 
 			for dir, _ := range dirs {
-				//progressLn("Changed dir: ", dir)
+				progressLn("Changed dir: ", dir)
 				syncDir(dir, false, true)
 			}
 			commitDiff()
@@ -451,9 +451,13 @@ func pathIsGlobalExcluded(path string, excludes map[string]bool) bool {
 }
 
 func syncDir(dir string, recursive, sendChanges bool) {
-	if dir == "./.unrealsync" {
+	if strings.HasPrefix(dir, "./") {
+		dir = dir[2:]
+	}
+	if dir == ".unrealsync" {
 		return
 	}
+
 	fp, err := os.Open(dir)
 	if err != nil {
 		progressLn("Cannot open ", dir, ": ", err.Error())
@@ -475,6 +479,7 @@ func syncDir(dir string, recursive, sendChanges bool) {
 
 	repoInfo, ok := repo[dir]
 	if !ok {
+		debugLn("No dir ", dir, " in repo")
 		repoInfo = make(map[string]*UnrealStat)
 		repo[dir] = repoInfo
 	}

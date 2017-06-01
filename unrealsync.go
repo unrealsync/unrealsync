@@ -14,10 +14,8 @@ import (
 const (
 	REPO_DIR           = ".unrealsync/"
 	REPO_CLIENT_CONFIG = REPO_DIR + "client_config"
-	REPO_FILES         = REPO_DIR + "files/"
 	REPO_TMP           = REPO_DIR + "tmp/"
-	REPO_LOG           = REPO_DIR + "log/"
-	REPO_LOG_FILENAME  = REPO_LOG + "out.log"
+	REPO_LOG_FILENAME  = REPO_DIR + "out.log"
 	REPO_PID           = REPO_DIR + "pid"
 	REPO_PID_SERVER    = REPO_DIR + "pid_server"
 
@@ -156,7 +154,7 @@ func main() {
 
 	os.RemoveAll(REPO_TMP)
 
-	for _, dir := range []string{REPO_DIR, REPO_FILES, REPO_TMP, REPO_LOG} {
+	for _, dir := range []string{REPO_DIR, REPO_TMP} {
 		_, err = os.Stat(dir)
 		if err != nil {
 			err = os.Mkdir(dir, 0777)

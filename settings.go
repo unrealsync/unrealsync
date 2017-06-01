@@ -46,7 +46,9 @@ func parseServerSettings(section string, serverSettings map[string]string, exclu
 	}
 
 	if serverSettings["exclude"] != "" {
-		localExcludes = parseExcludes(serverSettings["exclude"])
+		for key, value := range parseExcludes(serverSettings["exclude"]) {
+			localExcludes[key] = value
+		}
 	}
 
 	host, ok := serverSettings["host"]
@@ -82,6 +84,7 @@ func parseExcludes(excl string) map[string]bool {
 
 func parseConfig() (servers map[string]Settings, excludes map[string]bool) {
 	servers = make(map[string]Settings)
+	excludes = make(map[string]bool)
 	dict, err := ini.Load(REPO_CLIENT_CONFIG)
 
 	if err != nil {
@@ -93,8 +96,11 @@ func parseConfig() (servers map[string]Settings, excludes map[string]bool) {
 		fatalLn("Section " + GENERAL_SECTION + " of config file " + REPO_CLIENT_CONFIG + " is empty")
 	}
 
+	excludes[".unrealsync"] = true
 	if general["exclude"] != "" {
-		excludes = parseExcludes(general["exclude"])
+		for key, value := range parseExcludes(general["exclude"]) {
+			excludes[key] = value
+		}
 	}
 
 	forceServers := general["servers"]

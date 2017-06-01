@@ -156,10 +156,6 @@ doSendChangesLoop:
 			errorCh <- err
 			break
 		}
-		outLogMutex.Lock()
-		outLogReadPos[hostname] = pos
-		outLogMutex.Unlock()
-		debugLn("hostname:", hostname, " pos:", pos, " after reading", string(buf[0:10]))
 
 		bufBlocker.buf = buf[0:bufLen]
 		select {
@@ -174,6 +170,10 @@ doSendChangesLoop:
 			progressLn("Got stop sendChanges3")
 			break doSendChangesLoop
 		}
+		outLogMutex.Lock()
+		outLogReadPos[hostname] = pos
+		outLogMutex.Unlock()
+		debugLn("hostname:", hostname, " pos:", pos, " after reading", string(buf[0:10]))
 	}
 	close(stream)
 }

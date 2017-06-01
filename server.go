@@ -76,8 +76,6 @@ func applyDiff(buf []byte) {
 		fileStr := string(file)
 		dir := path.Dir(fileStr)
 
-		debugLn("apply ", fileStr, " ", dir, " ", excludes)
-
 		if dirs[dir] == nil {
 			dirs[dir] = make(map[string]*UnrealStat)
 		}
@@ -263,9 +261,8 @@ func processBigAbort(buf []byte, bigFps map[string]BigFile) {
 }
 
 func applyRemoteDiff(buf []byte) {
-	progressLn("Received diff, length ", formatLength(len(buf)))
 	applyDiff(buf)
-	progressLn("Applied diff")
+	progressLn("Applied diff ", formatLength(len(buf)))
 }
 
 func writeContents(file string, unrealStat UnrealStat, contents []byte) {
