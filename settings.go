@@ -88,7 +88,7 @@ func parseConfig() (servers map[string]Settings, excludes map[string]bool) {
 	dict, err := ini.Load(REPO_CLIENT_CONFIG)
 
 	if err != nil {
-		fatalLn(err)
+		fatalLn("Cannot parse client_config file: ", err)
 	}
 
 	general, ok := dict[GENERAL_SECTION]

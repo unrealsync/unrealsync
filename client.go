@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"crypto/md5"
 	"github.com/Md-Cake/fswatcher"
 )
 
@@ -49,26 +50,12 @@ func initialServerSync(hostname string, settings Settings) (err error) {
 	return
 }
 
-func copyUnrealsyncBinaries(uname []string, settings Settings) {
-	progressLn("Copying unrealsync binaries to " + settings.host + " ostype " + uname[0] + " osarch " + uname[1])
-
-	ostypeLower := strings.ToLower(uname[0])
-
-	names := []string{"/unrealsync-" + ostypeLower + "-" + uname[1]}
-
-	for _, name := range names {
-		args := sshOptions(settings)
-		source := unrealsyncDir + name
-
-		if _, err := os.Stat(source); err != nil {
-			panic("Cannot stat " + source + ": " + err.Error() +
-				". Please make sure you have built a corresponding unrealsync server version for your remote OS")
-		}
-
-		destination := settings.host + ":" + settings.dir + "/.unrealsync" + strings.Split(name, "-")[0]
-		args = append(args, source, destination)
-		execOrPanic("scp", args)
-	}
+func copyUnrealsyncBinaries(unrealsyncBinaryPathForHost string, settings Settings) {
+	progressLn("Copying unrealsync binary " + unrealsyncBinaryPathForHost + " to " + settings.host)
+	args := sshOptions(settings)
+	destination := settings.host + ":" + settings.dir + "/.unrealsync/unrealsync"
+	args = append(args, unrealsyncBinaryPathForHost, destination)
+	execOrPanic("scp", args)
 }
 
 func startServer(hostname string, settings Settings) {
@@ -101,11 +88,26 @@ func startServer(hostname string, settings Settings) {
 	}()
 
 	initialServerSync(hostname, settings)
-	uname := createDirectoriesAt(hostname, settings)
-	if settings.remoteBinPath == "" {
-		copyUnrealsyncBinaries(uname, settings)
+	ostype, osarch, unrealsyncBinaryPath, unrealsyncBinaryHash := createDirectoriesAt(hostname, settings)
+	unrealsyncBinaryPathForHost := unrealsyncDir + "/unrealsync-" + ostype + "-" + osarch
+	if fp, err := os.Open(unrealsyncBinaryPathForHost); err == nil {
+		hash := md5.New()
+		io.Copy(hash, fp)
+		hashSum := fmt.Sprintf("%x", hash.Sum(nil))
+		progressLn("Expected hashsum:" + hashSum)
+		if !strings.HasPrefix(unrealsyncBinaryHash, hashSum) {
+			unrealsyncBinaryPath = ""
+		}
 	}
-	cmd, stdin, stdout = launchUnrealsyncAt(settings)
+
+	if settings.remoteBinPath != "" {
+		unrealsyncBinaryPath = settings.remoteBinPath
+	} else if unrealsyncBinaryPath == "" {
+		copyUnrealsyncBinaries(unrealsyncBinaryPathForHost, settings)
+		unrealsyncBinaryPath = settings.dir + "/.unrealsync/unrealsync"
+	}
+
+	cmd, stdin, stdout = launchUnrealsyncAt(settings, unrealsyncBinaryPath)
 
 	stopChan := make(chan bool)
 	stream := make(chan BufBlocker)
@@ -123,7 +125,7 @@ func startServer(hostname string, settings Settings) {
 	panic(err)
 }
 
-func launchUnrealsyncAt(settings Settings) (*exec.Cmd, io.WriteCloser, io.ReadCloser) {
+func launchUnrealsyncAt(settings Settings, unrealsyncBinaryPath string) (*exec.Cmd, io.WriteCloser, io.ReadCloser) {
 	progressLn("Launching unrealsync at " + settings.host + "...")
 
 	args := sshOptions(settings)
@@ -136,12 +138,6 @@ func launchUnrealsyncAt(settings Settings) (*exec.Cmd, io.WriteCloser, io.ReadCl
 		flags += " --excludes " + dir
 	}
 
-	var unrealsyncBinaryPath string
-	if settings.remoteBinPath != "" {
-		unrealsyncBinaryPath = settings.remoteBinPath
-	} else {
-		unrealsyncBinaryPath = settings.dir + "/.unrealsync/unrealsync"
-	}
 	unrealsyncLaunchCmd := unrealsyncBinaryPath + " " + flags + " " + settings.dir
 	if settings.sudouser != "" {
 		unrealsyncLaunchCmd = "sudo -u " + settings.sudouser + " " + unrealsyncLaunchCmd
@@ -169,17 +165,24 @@ func launchUnrealsyncAt(settings Settings) (*exec.Cmd, io.WriteCloser, io.ReadCl
 	return cmd, stdin, stdout
 }
 
-func createDirectoriesAt(hostname string, settings Settings) []string {
+func createDirectoriesAt(hostname string, settings Settings) (ostype, osarch, unrealsyncBinaryPath, unrealsyncBinaryHash string) {
 	progressLn("Creating directories at " + hostname + "...")
 
 	args := sshOptions(settings)
 	// TODO: escaping
 	dir := settings.dir + "/.unrealsync"
-	args = append(args, settings.host, "if [ ! -d "+dir+" ]; then mkdir -p "+dir+"; fi; rm -f "+dir+"/unrealsync && uname && uname -m")
+	args = append(args, settings.host, "if [ ! -d "+dir+" ]; then mkdir -p "+dir+"; fi;"+
+		"rm -f "+dir+"/unrealsync;"+
+		"uname; uname -m; if ! which unrealsync 2>/dev/null ; then echo ''; fi;"+
+		"md5 -r \"$(which unrealsync 2>/dev/null)\" || md5sum \"$(which unrealsync 2>/dev/null)\""+
+		"")
 
 	output := execOrPanic("ssh", args)
 	uname := strings.Split(strings.TrimSpace(output), "\n")
-	return uname
+
+	fmt.Println(uname)
+
+	return strings.ToLower(uname[0]), uname[1], uname[2], uname[3]
 }
 
 func singleStdinWriter(stream chan BufBlocker, stdin io.WriteCloser, errorCh chan error) {
