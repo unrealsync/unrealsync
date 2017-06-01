@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"crypto/md5"
 	"github.com/Md-Cake/fswatcher"
 )
 
@@ -88,21 +87,11 @@ func startServer(hostname string, settings Settings) {
 	}()
 
 	initialServerSync(hostname, settings)
-	ostype, osarch, unrealsyncBinaryPath, unrealsyncBinaryHash := createDirectoriesAt(hostname, settings)
-	unrealsyncBinaryPathForHost := unrealsyncDir + "/unrealsync-" + ostype + "-" + osarch
-	if fp, err := os.Open(unrealsyncBinaryPathForHost); err == nil {
-		hash := md5.New()
-		io.Copy(hash, fp)
-		hashSum := fmt.Sprintf("%x", hash.Sum(nil))
-		progressLn("Expected hashsum:" + hashSum)
-		if !strings.HasPrefix(unrealsyncBinaryHash, hashSum) {
-			unrealsyncBinaryPath = ""
-		}
-	}
-
+	ostype, osarch, unrealsyncBinaryPath, unrealsyncVersion := createDirectoriesAt(hostname, settings)
 	if settings.remoteBinPath != "" {
 		unrealsyncBinaryPath = settings.remoteBinPath
-	} else if unrealsyncBinaryPath == "" {
+	} else if unrealsyncBinaryPath == "" || unrealsyncVersion != VERSION {
+		unrealsyncBinaryPathForHost := unrealsyncDir + "/unrealsync-" + ostype + "-" + osarch
 		copyUnrealsyncBinaries(unrealsyncBinaryPathForHost, settings)
 		unrealsyncBinaryPath = settings.dir + "/.unrealsync/unrealsync"
 	}
@@ -165,7 +154,7 @@ func launchUnrealsyncAt(settings Settings, unrealsyncBinaryPath string) (*exec.C
 	return cmd, stdin, stdout
 }
 
-func createDirectoriesAt(hostname string, settings Settings) (ostype, osarch, unrealsyncBinaryPath, unrealsyncBinaryHash string) {
+func createDirectoriesAt(hostname string, settings Settings) (ostype, osarch, unrealsyncBinaryPath, unrealsyncVersion string) {
 	progressLn("Creating directories at " + hostname + "...")
 
 	args := sshOptions(settings)
@@ -173,9 +162,8 @@ func createDirectoriesAt(hostname string, settings Settings) (ostype, osarch, un
 	dir := settings.dir + "/.unrealsync"
 	args = append(args, settings.host, "if [ ! -d "+dir+" ]; then mkdir -p "+dir+"; fi;"+
 		"rm -f "+dir+"/unrealsync &&"+
-		"uname && uname -m && if ! which unrealsync 2>/dev/null ; then echo 'no-binary'; echo 'no-hash';"+
-		"else md5 -r \"$(which unrealsync 2>/dev/null)\" 2>/dev/null || md5sum \"$(which unrealsync 2>/dev/null)\" 2>/dev/null ; fi"+
-		"")
+		"uname && uname -m && if ! which unrealsync 2>/dev/null ; then echo 'no-binary'; echo 'no-version';"+
+		"else unrealsync --version 2>/dev/null ; echo 'no-version' ; fi")
 
 	output := execOrPanic("ssh", args)
 	uname := strings.Split(strings.TrimSpace(output), "\n")

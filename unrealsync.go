@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	VERSION            = "1.0.0"
 	REPO_DIR           = ".unrealsync/"
 	REPO_CLIENT_CONFIG = REPO_DIR + "client_config"
 	REPO_TMP           = REPO_DIR + "tmp/"
@@ -38,7 +39,6 @@ const (
 
 	PING_INTERVAL          = time.Minute
 	DIR_AGGREGATE_INTERVAL = 400 * time.Millisecond
-	LOCAL_WATCHER_READY    = "Initialized"
 )
 
 type MultipleStringFlag []string
@@ -57,12 +57,14 @@ var (
 	rcvchan          = make(chan bool)
 	isServer         = false
 	isDebug          = false
+	isVersion        = false
 	hostname         = ""
 	excludesFlag     MultipleStringFlag
 	forceServersFlag = ""
 )
 
 func init() {
+	flag.BoolVar(&isVersion, "version", false, "Show version")
 	flag.BoolVar(&isDebug, "debug", false, "Turn on debugging information")
 	flag.BoolVar(&isServer, "server", false, "Internal parameter used on remote side")
 	flag.StringVar(&hostname, "hostname", "", "Internal parameter used on remote side")
@@ -133,6 +135,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Current args:", args)
 		flag.PrintDefaults()
 		os.Exit(2)
+	} else if isVersion {
+		fmt.Println(VERSION)
+		os.Exit(0)
 	} else if len(args) == 1 {
 		if err := os.Chdir(args[0]); err != nil {
 			fatalLn("Cannot chdir to ", args[0])
