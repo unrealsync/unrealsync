@@ -172,15 +172,15 @@ func createDirectoriesAt(hostname string, settings Settings) (ostype, osarch, un
 	// TODO: escaping
 	dir := settings.dir + "/.unrealsync"
 	args = append(args, settings.host, "if [ ! -d "+dir+" ]; then mkdir -p "+dir+"; fi;"+
-		"rm -f "+dir+"/unrealsync;"+
-		"uname; uname -m; if ! which unrealsync 2>/dev/null ; then echo ''; fi;"+
-		"md5 -r \"$(which unrealsync 2>/dev/null)\" || md5sum \"$(which unrealsync 2>/dev/null)\""+
+		"rm -f "+dir+"/unrealsync &&"+
+		"uname && uname -m && if ! which unrealsync 2>/dev/null ; then echo 'no-binary'; echo 'no-hash';"+
+		"else md5 -r \"$(which unrealsync 2>/dev/null)\" 2>/dev/null || md5sum \"$(which unrealsync 2>/dev/null)\" 2>/dev/null ; fi"+
 		"")
 
 	output := execOrPanic("ssh", args)
 	uname := strings.Split(strings.TrimSpace(output), "\n")
 
-	fmt.Println(uname)
+	fmt.Println(len(uname), uname)
 
 	return strings.ToLower(uname[0]), uname[1], uname[2], uname[3]
 }
