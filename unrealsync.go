@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	VERSION            = "1.0.0"
+	VERSION            = "1.0.1"
 	REPO_DIR           = ".unrealsync/"
 	REPO_CLIENT_CONFIG = REPO_DIR + "client_config"
 	REPO_TMP           = REPO_DIR + "tmp/"
@@ -68,7 +68,7 @@ func init() {
 	flag.BoolVar(&isDebug, "debug", false, "Turn on debugging information")
 	flag.BoolVar(&isServer, "server", false, "Internal parameter used on remote side")
 	flag.StringVar(&hostname, "hostname", "", "Internal parameter used on remote side")
-	flag.Var(&excludesFlag, "excludes", "Internal parameter used on remote side")
+	flag.Var(&excludesFlag, "exclude", "Internal parameter used on remote side")
 	flag.StringVar(&forceServersFlag, "servers", "", "Perform sync only for specified servers")
 }
 

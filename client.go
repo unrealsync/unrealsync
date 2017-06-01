@@ -124,7 +124,7 @@ func launchUnrealsyncAt(settings Settings, unrealsyncBinaryPath string) (*exec.C
 		flags += " --debug"
 	}
 	for dir, _ := range settings.excludes {
-		flags += " --excludes " + dir
+		flags += " --exclude " + dir
 	}
 
 	unrealsyncLaunchCmd := unrealsyncBinaryPath + " " + flags + " " + settings.dir
