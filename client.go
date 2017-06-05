@@ -168,8 +168,6 @@ func createDirectoriesAt(hostname string, settings Settings) (ostype, osarch, un
 	output := execOrPanic("ssh", args)
 	uname := strings.Split(strings.TrimSpace(output), "\n")
 
-	fmt.Println(len(uname), uname)
-
 	return strings.ToLower(uname[0]), uname[1], uname[2], uname[3]
 }
 
