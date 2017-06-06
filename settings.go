@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bo0rsh201/unrealsync/list"
+	"github.com/unrealsync/unrealsync/list"
 	ini "github.com/glacjay/goini"
 )
 

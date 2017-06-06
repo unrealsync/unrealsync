@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Md-Cake/fswatcher"
+	"github.com/unrealsync/fswatcher"
 )
 
 type Client struct {
