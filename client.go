@@ -102,7 +102,7 @@ func startServer(hostname string, settings Settings) {
 	stream := make(chan BufBlocker)
 	errorCh := make(chan error)
 	// receive from singlestdinwriter (stream) and send into ssh stdin
-	go singleStdinWriter(stream, stdin, errorCh)
+	go singleStdinWriter(stream, stdin, errorCh, stopChan)
 	// read log and send into ssh stdin via singlestdinwriter (stream)
 	// stops if stopChan closes and closes stream
 	go doSendChanges(stream, hostname, stopChan, errorCh)
@@ -171,9 +171,12 @@ func createDirectoriesAt(hostname string, settings Settings) (ostype, osarch, un
 	return strings.ToLower(uname[0]), uname[1], uname[2], uname[3]
 }
 
-func singleStdinWriter(stream chan BufBlocker, stdin io.WriteCloser, errorCh chan error) {
+func singleStdinWriter(stream chan BufBlocker, stdin io.WriteCloser, errorCh chan error, stopCh chan bool) {
 	for {
-		bufBlocker := <-stream
+		select {
+			case bufBlocker := <-stream:
+			case <- stopCh:
+		}
 		_, err := stdin.Write(bufBlocker.buf)
 		bufBlocker.sent <- true
 		if err != nil {

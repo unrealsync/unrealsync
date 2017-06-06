@@ -190,7 +190,6 @@ doSendChangesLoop:
 		outLogMutex.Unlock()
 		debugLn("hostname:", hostname, " pos:", pos, " after reading", string(buf[0:10]))
 	}
-	close(stream)
 }
 
 func printStatusThread() {
