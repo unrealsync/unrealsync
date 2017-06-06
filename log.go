@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sort"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +17,8 @@ const (
 	LOG_MAX_SIZE = 50 * 1048576
 )
 
+type SortableStrings []string
+
 type BufBlocker struct {
 	buf  []byte
 	sent chan bool
@@ -29,6 +32,18 @@ var (
 	outLogReadActual map[string]bool
 	outLogMutex      sync.Mutex
 )
+
+func (r SortableStrings) Len() int {
+	return len(r)
+}
+
+func (r SortableStrings) Less(i, j int) bool {
+	return strings.Compare(r[i], r[j]) > 0;
+}
+
+func (r SortableStrings) Swap(i, j int) {
+	r[i], r[j] = r[j], r[i]
+}
 
 func initializeLogs() {
 	createOutLog()
@@ -193,6 +208,8 @@ func printStatusThread() {
 			}
 		}
 		outLogMutex.Unlock()
+
+		sort.Sort(SortableStrings(statuses))
 
 		runtime.ReadMemStats(mem)
 		if len(statuses) > 0 {
