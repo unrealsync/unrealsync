@@ -1,0 +1,15 @@
+language: go
+os:
+- linux
+- osx
+script:
+- go build -o unrealsync-`uname | tr '[:upper:]' '[:lower:]'`
+deploy:
+  provider: releases
+  api_key:
+    secure: QVa08clqKrzJGJKWPo3ChGNIwVonfWzMEeraOabYXOjq+01oR0SsbJbwzc3LZ8ri0c0H0BTpGA+h98MoyywkGe5NP+9j41lWbAeMXb/FGEZXr6oqHSjuBhaCkPiDxn2jn/Zha5Qi6iHKwdnT5endqzXT4UqfnJxdPhPbuBj95O7EeeCUMxzuXgUp6xFlcAnVEgqavlF6clJBI2Ay0PluhX9GTS7VBjmOogJzOUoHhMQm1FhFrc2IpFudNHXsNhRzArfznl7fHfK29GFIK1LTtsiLuXs91qVxEhiqaHk0IUVHUbZL1Mq8ucv1YCntKtoxnr3HiZ2IocNx+qAl+HvlF6Npqn3fnI4AAu0rsC7QFpZG+QHGjRhU9USw5kuVjqIGBB4gTwi2M57y3WBHl8oba0kRWN+BRXHaj8jNcyCPmE4/1seBfY91mh+4O24ZezjHDyQrG8KcT9JuaE4+zoyixTzHVq5txDPBPyAqZMmJW6RbGtBG8qezrinmTOL+980dESuTiX/myJuRodzqSLe6+yZOrPlJJA/hivPXT4wnFkoG/cIivX4I/aQL7p7StSAu7AcRgVBhWwQNXo2CmoYaqHahflfgk1rFsvwwGeNLHZrZL5SYk61o1dlxABF7pqnULqzW5A1awIf++tMD6rv7tc6YYX/srXgjk6hUCTDwrHE=
+  file_glob: true
+  file: unrealsync-*
+  on:
+    repo: unrealsync/unrealsync
+    tags: true
