@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/unrealsync/unrealsync/list"
 	ini "github.com/glacjay/goini"
+	"github.com/unrealsync/unrealsync/list"
 )
 
 const GENERAL_SECTION = "general_settings"

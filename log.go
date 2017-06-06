@@ -1,12 +1,12 @@
 package main
 
 import (
-	"sort"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,7 +38,7 @@ func (r SortableStrings) Len() int {
 }
 
 func (r SortableStrings) Less(i, j int) bool {
-	return strings.Compare(r[i], r[j]) > 0;
+	return strings.Compare(r[i], r[j]) > 0
 }
 
 func (r SortableStrings) Swap(i, j int) {

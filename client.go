@@ -172,10 +172,11 @@ func createDirectoriesAt(hostname string, settings Settings) (ostype, osarch, un
 }
 
 func singleStdinWriter(stream chan BufBlocker, stdin io.WriteCloser, errorCh chan error, stopCh chan bool) {
+	var bufBlocker BufBlocker
 	for {
 		select {
-			case bufBlocker := <-stream:
-			case <- stopCh:
+		case bufBlocker = <-stream:
+		case <-stopCh:
 		}
 		_, err := stdin.Write(bufBlocker.buf)
 		bufBlocker.sent <- true
