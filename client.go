@@ -537,8 +537,11 @@ func pingThread() {
 	}
 }
 
-func doClient() {
-	servers, globalExcludes := parseConfig()
+func doClient(servers map[string]Settings) {
+	var globalExcludes map[string]bool
+	if len(servers) == 0 {
+		servers, globalExcludes = parseConfig()
+	}
 
 	repo = make(map[string]map[string]*UnrealStat)
 

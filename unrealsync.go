@@ -126,21 +126,24 @@ func writePidFileAndKillPrevious(pid_filename string) {
 
 func main() {
 	var err error
+	servers := make(map[string]Settings)
 
 	flag.Parse()
 	args := flag.Args()
 
-	if len(args) > 1 {
-		fmt.Fprintln(os.Stderr, "Usage: unrealsync [<flags>] [<dir>]")
-		fmt.Fprintln(os.Stderr, "Current args:", args)
-		flag.PrintDefaults()
-		os.Exit(2)
-	} else if isVersion {
+	if isVersion {
 		fmt.Println(VERSION)
 		os.Exit(0)
-	} else if len(args) == 1 {
+	} else if len(args) > 0 {
 		if err := os.Chdir(args[0]); err != nil {
 			fatalLn("Cannot chdir to ", args[0])
+		}
+		for i := 1; i < len(args); i++ {
+			parts := strings.Split(args[i], ":")
+			if len(parts) != 2 {
+				fatalLn("bad host:dir specification:" + args[i])
+			}
+			servers[parts[0]] = Settings{host: parts[0], dir: parts[1]}
 		}
 	}
 
@@ -182,6 +185,6 @@ func main() {
 	if isServer {
 		doServer()
 	} else {
-		doClient()
+		doClient(servers)
 	}
 }
