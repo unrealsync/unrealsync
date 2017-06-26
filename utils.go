@@ -51,7 +51,10 @@ func sshOptions(settings Settings) []string {
 	options = append(options, "-o", fmt.Sprint("ServerAliveCountMax=", SERVER_ALIVE_COUNT_MAX))
 
 	// Batch mode settings for ssh to prevent it from asking its' stupid questions
-	options = append(options, "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no")
+	if settings.batchMode {
+		options = append(options, "-o", "BatchMode=yes")
+	}
+	options = append(options, "-o", "StrictHostKeyChecking=no")
 	options = append(options, "-o", "UserKnownHostsFile=/dev/null")
 
 	if settings.port > 0 {

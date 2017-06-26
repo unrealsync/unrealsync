@@ -21,7 +21,7 @@ type Settings struct {
 	dir           string
 	remoteBinPath string
 	os            string
-
+	batchMode   bool
 	compression bool
 }
 
@@ -56,6 +56,7 @@ func parseServerSettings(section string, serverSettings map[string]string, exclu
 		host = section
 	}
 
+	batchMode := (serverSettings["batchmode"] != "false")
 	compression := (serverSettings["compression"] != "false")
 
 	return Settings{
@@ -67,6 +68,7 @@ func parseServerSettings(section string, serverSettings map[string]string, exclu
 		serverSettings["dir"],
 		serverSettings["remote-bin-path"],
 		serverSettings["os"],
+		batchMode,
 		compression,
 	}
 
