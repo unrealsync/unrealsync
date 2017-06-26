@@ -143,7 +143,11 @@ func main() {
 			if len(parts) != 2 {
 				fatalLn("bad host:dir specification:" + args[i])
 			}
-			servers[parts[0]] = Settings{host: parts[0], dir: parts[1]}
+			if host_user_parts := strings.Split(parts[0], "@"); len(host_user_parts) == 2 {
+				servers[parts[0]] = Settings{username: host_user_parts[0], host: host_user_parts[1], dir: parts[1]}
+			} else {
+				servers[parts[0]] = Settings{host: parts[0], dir: parts[1]}
+			}
 		}
 	}
 
