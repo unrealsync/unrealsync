@@ -25,12 +25,12 @@ type BufBlocker struct {
 }
 
 var (
-	outLogWriteFp    *os.File
-	outLogPos        int64
-	outLogReadFps    map[string]*os.File
-	outLogReadPos    map[string]int64
-	outLogReadActual map[string]bool
-	outLogMutex      sync.Mutex
+	outLogWriteFp     *os.File
+	outLogPos         int64
+	outLogReadFps     map[string]*os.File
+	outLogReadPos     map[string]int64
+	outLogReadOldSize map[string]int64
+	outLogMutex       sync.Mutex
 )
 
 func (r SortableStrings) Len() int {
@@ -49,7 +49,7 @@ func initializeLogs() {
 	createOutLog()
 	outLogReadFps = make(map[string]*os.File)
 	outLogReadPos = make(map[string]int64)
-	outLogReadActual = make(map[string]bool)
+	outLogReadOldSize = make(map[string]int64)
 }
 
 func writeToOutLog(action string, buf []byte) {
@@ -64,8 +64,8 @@ func writeToOutLog(action string, buf []byte) {
 	outLogPos, err = outLogWriteFp.Seek(0, os.SEEK_CUR)
 	debugLn("outlogpos:", outLogPos, " after action:", action)
 	if outLogPos > LOG_MAX_SIZE {
-		for _, actual := range outLogReadActual {
-			if !actual {
+		for _, oldSize := range outLogReadOldSize {
+			if oldSize != 0 {
 				debugLn("could not reopen log, not all readers are reading from actual")
 				return
 			}
@@ -86,10 +86,9 @@ func createOutLog() {
 	if err != nil {
 		fatalLn("Cannot open ", REPO_LOG_FILENAME, ": ", err.Error())
 	}
-	outLogWriteFp.Name()
-	for hostname, _ := range outLogReadActual {
+	for hostname, _ := range outLogReadOldSize {
 		// invalidate readers
-		outLogReadActual[hostname] = false
+		outLogReadOldSize[hostname] = outLogPos
 	}
 	outLogPos = 0
 }
@@ -121,7 +120,7 @@ func openOutLogForRead(hostname string, continuation bool) (err error) {
 	} else {
 		outLogReadPos[hostname] = 0
 	}
-	outLogReadActual[hostname] = true
+	outLogReadOldSize[hostname] = 0
 	return
 }
 
@@ -142,12 +141,12 @@ doSendChangesLoop:
 		}
 		outLogMutex.Lock()
 		localOutLogPos := outLogPos
-		localActual := outLogReadActual[hostname]
+		localOldSize := outLogReadOldSize[hostname]
 		localReadPos := outLogReadPos[hostname]
 		fp := outLogReadFps[hostname]
 		outLogMutex.Unlock()
 
-		if localReadPos == localOutLogPos && localActual {
+		if localReadPos == localOutLogPos && localOldSize == 0 {
 			time.Sleep(time.Millisecond * 20)
 			continue
 		}
@@ -192,18 +191,27 @@ doSendChangesLoop:
 	}
 }
 
-func printStatusThread() {
+func printStatusThread(clients map[string]*Client) {
+	var sendQueueSize int64
 	prevStatusesOk := false
 	mem := new(runtime.MemStats)
 	for {
 		statuses := make([]string, 0)
 
 		outLogMutex.Lock()
-		for hostname, actual := range outLogReadActual {
-			if !actual {
-				statuses = append(statuses, hostname+" oldfile")
+		for hostname, oldSize := range outLogReadOldSize {
+			if oldSize != 0 {
+				sendQueueSize = oldSize - outLogReadPos[hostname] + outLogPos
+				statuses = append(statuses, hostname+" "+formatLength(int(sendQueueSize))+"*")
 			} else if outLogReadPos[hostname] != outLogPos {
-				statuses = append(statuses, hostname+" "+formatLength(int(outLogPos-outLogReadPos[hostname])))
+				sendQueueSize = outLogPos - outLogReadPos[hostname]
+				statuses = append(statuses, hostname+" "+formatLength(int(sendQueueSize)))
+			} else {
+				sendQueueSize = 0
+			}
+			if err := clients[hostname].notifySendQueueSize(sendQueueSize); err != nil {
+				progressLn("removing "+hostname+" from outLogReadOldSize")
+				delete(outLogReadOldSize, hostname)
 			}
 		}
 		outLogMutex.Unlock()
@@ -212,10 +220,10 @@ func printStatusThread() {
 
 		runtime.ReadMemStats(mem)
 		if len(statuses) > 0 {
-			progress("Pending diffs: ", strings.Join(statuses, "; "))
+			progressLn("Pending diffs: ", strings.Join(statuses, "; "))
 			prevStatusesOk = false
 		} else if !prevStatusesOk {
-			progress("All diffs were sent mem.Sys:", formatLength(int(mem.Sys)))
+			progressLn("All diffs were sent mem.Sys:", formatLength(int(mem.Sys)))
 			prevStatusesOk = true
 		}
 		time.Sleep(time.Millisecond * 300)

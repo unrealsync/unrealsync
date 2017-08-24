@@ -12,14 +12,14 @@ Prerequisites
 
 All these tools present on both your machine *and remote server(s)*:
 
- - unrealsync
  - ssh
+ - scp
  - rsync
 
 Build
 =====
 
-Build unrealsync, using "go get" on both your machine and target server(s) or use pre-build binaries from releases section.
+Build unrealsync, using "go get" on both your machine and target server(s) or use pre-built binaries from releases section.
 
 Usage
 ======
@@ -61,6 +61,10 @@ remote-bin-path = remote path ; (optional) custom folder to search unrealsync (a
                               ; this option can be used if you want to copy them once in some folder and then just use pre-installed version
 compression = false ; (optional) turn off ssh compression, if you have really fast connection (like 1 GBit/s) and unrealsync becomes CPU-bound
 disabled = true ; (optional) temporarily disable the specified host and skip synchronization with it
+send-queue-size-limit = 1000000000 ; (optional) limit send queue size in bytes. Changes are firstly put into log
+                                   ; from which synchronisation to each server begins thus log may grow too much
+                                   ; if synchronisation to server is slow. To prevent overgrowing log file unrealsync
+                                   ; will restart sync
 ```
 
 Config example

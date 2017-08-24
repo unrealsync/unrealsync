@@ -70,11 +70,21 @@ func sshOptions(settings Settings) []string {
 	return options
 }
 
-func execOrPanic(cmd string, args []string) string {
+func execOrPanic(cmd string, args []string, cancelCh chan bool) string {
 	debugLn(cmd, args)
 	var bufErr bytes.Buffer
 	command := exec.Command(cmd, args...)
 	command.Stderr = &bufErr
+
+	go func() {
+		_, open := <-cancelCh
+		if !open {
+			err := command.Process.Kill()
+			if err != nil {
+				progressLn("Could not kill process on cancel:", cmd, args)
+			}
+		}
+	}()
 	output, err := command.Output()
 
 	if err != nil {

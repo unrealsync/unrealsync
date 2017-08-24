@@ -18,24 +18,33 @@ type Settings struct {
 	host     string
 	port     int
 
-	dir           string
-	remoteBinPath string
-	os            string
-	batchMode   bool
-	compression bool
+	dir                string
+	remoteBinPath      string
+	os                 string
+	batchMode          bool
+	compression        bool
+	sendQueueSizeLimit int64
 }
 
 func parseServerSettings(section string, serverSettings map[string]string, excludes map[string]bool) Settings {
 
 	var (
-		port int
-		err  error
+		port               int
+		sendQueueSizeLimit int
+		err                error
 	)
 
 	if serverSettings["port"] != "" {
 		port, err = strconv.Atoi(serverSettings["port"])
 		if err != nil {
 			fatalLn("Cannot parse 'port' property in [" + section + "] section of " + REPO_CLIENT_CONFIG + ": " + err.Error())
+		}
+	}
+
+	if serverSettings["send-queue-size-limit"] != "" {
+		sendQueueSizeLimit, err = strconv.Atoi(serverSettings["send-queue-size-limit"])
+		if err != nil {
+			fatalLn("Cannot parse 'send-queue-size-limit' property in [" + section + "] section of " + REPO_CLIENT_CONFIG + ": " + err.Error())
 		}
 	}
 
@@ -70,6 +79,7 @@ func parseServerSettings(section string, serverSettings map[string]string, exclu
 		serverSettings["os"],
 		batchMode,
 		compression,
+		int64(sendQueueSizeLimit),
 	}
 
 }

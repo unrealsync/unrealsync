@@ -351,7 +351,6 @@ func timeoutThread() {
 		select {
 		case <-rcvchan:
 		case <-time.After(PING_INTERVAL * 2):
-			os.Create(REPO_TMP + "deadlock")
 			progressLn("Server timeout")
 			os.Exit(1)
 		}
