@@ -220,10 +220,10 @@ func printStatusThread(clients map[string]*Client) {
 
 		runtime.ReadMemStats(mem)
 		if len(statuses) > 0 {
-			progressLn("Pending diffs: ", strings.Join(statuses, "; "))
+			progress("Pending diffs: ", strings.Join(statuses, "; "))
 			prevStatusesOk = false
 		} else if !prevStatusesOk {
-			progressLn("All diffs were sent mem.Sys:", formatLength(int(mem.Sys)))
+			progress("All diffs were sent mem.Sys:", formatLength(int(mem.Sys)))
 			prevStatusesOk = true
 		}
 		time.Sleep(time.Millisecond * 300)
