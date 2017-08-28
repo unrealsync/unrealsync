@@ -205,7 +205,10 @@ func (r *Client) notifySendQueueSize(sendQueueSize int64) (err error) {
 	if r.settings.sendQueueSizeLimit != 0 && sendQueueSize > r.settings.sendQueueSizeLimit {
 		err = errors.New("SendQueueSize limit exceeded for " + r.settings.host)
 		progressLn(err)
-		r.errorCh <- err
+		select {
+		case r.errorCh <- err:
+		default:
+		}
 	}
 	return
 }
