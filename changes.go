@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"net/http"
+	"runtime"
+	"sort"
 )
 
 var (
@@ -51,7 +54,7 @@ func commitBigFile(fileStr string, stat *UnrealStat) {
 
 	fp, err := os.Open(fileStr)
 	if err != nil {
-		progressLn("Could not open ", fileStr, ": ", err)
+		warningLn("Could not open ", fileStr, ": ", err)
 		return
 	}
 	defer fp.Close()
@@ -79,13 +82,13 @@ func commitBigFile(fileStr string, stat *UnrealStat) {
 
 		fileStat, err := fp.Stat()
 		if err != nil {
-			progressLn("Cannot stat ", fileStr, " that we are reading right now: ", err.Error())
+			warningLn("Cannot stat ", fileStr, " that we are reading right now: ", err.Error())
 			writeToOutLog(ACTION_BIG_ABORT, []byte(file))
 			return
 		}
 
 		if !StatsEqual(fileStat, *stat) {
-			progressLn("File ", fileStr, " has changed, aborting transfer")
+			warningLn("File ", fileStr, " has changed, aborting transfer")
 			writeToOutLog(ACTION_BIG_ABORT, []byte(file))
 			return
 		}
@@ -93,13 +96,13 @@ func commitBigFile(fileStr string, stat *UnrealStat) {
 		n, err := fp.Read(buf[bufOffset:])
 		if err != nil && err != io.EOF {
 			// if we were unable to read file that we just opened then probably there are some problems with the OS
-			progressLn("Cannot read ", file, ": ", err)
+			warningLn("Cannot read ", file, ": ", err)
 			writeToOutLog(ACTION_BIG_ABORT, []byte(file))
 			return
 		}
 
 		if n != len(buf)-bufOffset && int64(n) != bytesLeft {
-			progressLn("Read different number of bytes than expected from ", file)
+			warningLn("Read different number of bytes than expected from ", file)
 			writeToOutLog(ACTION_BIG_ABORT, []byte(file))
 			return
 		}
@@ -145,20 +148,20 @@ func addToDiff(file string, stat *UnrealStat) {
 		if stat.isLink {
 			bufStr, err := os.Readlink(file)
 			if err != nil {
-				progressLn("Could not read link " + file)
+				warningLn("Could not read link " + file)
 				return
 			}
 
 			buf = []byte(bufStr)
 
 			if len(buf) != int(diffLen) {
-				progressLn("Readlink different number of bytes than expected from ", file)
+				warningLn("Readlink different number of bytes than expected from ", file)
 				return
 			}
 		} else {
 			fp, err := os.Open(file)
 			if err != nil {
-				progressLn("Could not open ", file, ": ", err)
+				warningLn("Could not open ", file, ": ", err)
 				return
 			}
 			defer fp.Close()
@@ -167,12 +170,12 @@ func addToDiff(file string, stat *UnrealStat) {
 			n, err := fp.Read(buf)
 			if err != nil && err != io.EOF {
 				// if we were unable to read file that we just opened then probably there are some problems with the OS
-				progressLn("Cannot read ", file, ": ", err)
+				warningLn("Cannot read ", file, ": ", err)
 				return
 			}
 
 			if n != int(diffLen) {
-				progressLn("Read different number of bytes than expected from ", file)
+				warningLn("Read different number of bytes than expected from ", file)
 				return
 			}
 		}
@@ -218,7 +221,7 @@ func getPathToSync(path string, excludes map[string]bool) (string, error) {
 	if filepath.IsAbs(path) {
 		path, err = filepath.Rel(sourceDir, path)
 		if err != nil {
-			progressLn("Cannot compute relative path: ", err)
+			warningLn("Cannot compute relative path: ", err)
 			return "", err
 		}
 	}
@@ -226,7 +229,7 @@ func getPathToSync(path string, excludes map[string]bool) (string, error) {
 
 	if err != nil {
 		if !os.IsNotExist(err) {
-			progressLn("Stat failed for ", path, ": ", err.Error())
+			warningLn("Stat failed for ", path, ": ", err.Error())
 			return "", err
 		}
 
@@ -262,7 +265,7 @@ func syncDir(dir string, recursive, sendChanges bool) {
 
 	fp, err := os.Open(dir)
 	if err != nil {
-		progressLn("Cannot open ", dir, ": ", err.Error())
+		warningLn("Cannot open ", dir, ": ", err.Error())
 		return
 	}
 
@@ -270,12 +273,12 @@ func syncDir(dir string, recursive, sendChanges bool) {
 
 	stat, err := fp.Stat()
 	if err != nil {
-		progressLn("Cannot stat ", dir, ": ", err.Error())
+		warningLn("Cannot stat ", dir, ": ", err.Error())
 		return
 	}
 
 	if !stat.IsDir() {
-		progressLn("Suddenly ", dir, " stopped being a directory")
+		warningLn("Suddenly ", dir, " stopped being a directory")
 		return
 	}
 
@@ -307,7 +310,7 @@ func syncDir(dir string, recursive, sendChanges bool) {
 				break
 			}
 
-			progressLn("Could not read directory names from " + dir + ": " + err.Error())
+			warningLn("Could not read directory names from " + dir + ": " + err.Error())
 			break
 		}
 
@@ -367,9 +370,50 @@ func doClient(servers map[string]Settings) {
 	waitWatcherReady(dirschan)
 
 	syncDir(".", true, false)
-	go printStatusThread(clients)
+
+	http.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
+		var sendQueueSize int64
+		mem := new(runtime.MemStats)
+		statuses := make([]string, 0)
+
+		outLogMutex.Lock()
+		for hostname, oldSize := range outLogReadOldSize {
+			if oldSize != 0 {
+				sendQueueSize = oldSize - outLogReadPos[hostname] + outLogPos
+				statuses = append(statuses, hostname+" "+formatLength(int(sendQueueSize))+"*")
+			} else if outLogReadPos[hostname] != outLogPos {
+				sendQueueSize = outLogPos - outLogReadPos[hostname]
+				statuses = append(statuses, hostname+" "+formatLength(int(sendQueueSize)))
+			} else {
+				sendQueueSize = 0
+			}
+			if err := clients[hostname].notifySendQueueSize(sendQueueSize); err != nil {
+				progressLn("removing " + hostname + " from outLogReadOldSize")
+				delete(outLogReadOldSize, hostname)
+			}
+		}
+		outLogMutex.Unlock()
+
+		sort.Sort(SortableStrings(statuses))
+
+		runtime.ReadMemStats(mem)
+		if len(statuses) > 0 {
+			rw.Write([]byte("Pending diffs: " + strings.Join(statuses, "; ") + "\n"))
+		} else {
+			rw.Write([]byte("All diffs were sent mem.Sys:" + formatLength(int(mem.Sys)) + "\n"))
+		}
+		i := LogHead - 1
+		for cnt := 1000; cnt > 0; cnt-- {
+			if i < 0 {
+				i = len(Log) - 1
+			}
+			rw.Write([]byte(Log[i]))
+			i--
+		}
+	})
+	go http.ListenAndServe("127.0.0.1:6061", nil)
 
 	// read watcher
-	progressLn("Entering watcher loop")
+	warningLn("Entering watcher loop http://127.0.0.1:6061")
 	aggregateDirs(dirschan, globalExcludes)
 }

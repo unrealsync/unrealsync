@@ -125,13 +125,13 @@ func parseConfig() (servers map[string]Settings, excludes map[string]bool) {
 	for key, serverSettings := range dict {
 		if key == "" {
 			if len(serverSettings) > 0 {
-				progressLn("You should not have top-level settings in " + REPO_CLIENT_CONFIG)
+				warningLn("You should not have top-level settings in " + REPO_CLIENT_CONFIG)
 			}
 			continue
 		}
 
 		if _, ok := serverSettings["disabled"]; ok {
-			progressLn("Skipping [" + key + "] as disabled")
+			warningLn("Skipping [" + key + "] as disabled")
 			continue
 		}
 

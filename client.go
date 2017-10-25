@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -58,27 +57,27 @@ func (r *Client) startServer() {
 	r.errorCh = make(chan error)
 	var cmd *exec.Cmd
 	var stdin io.WriteCloser
-	var stdout io.ReadCloser
+	var stdout, stderr io.ReadCloser
 	defer func() {
 		if err := recover(); err != nil {
 			trace := make([]byte, 10000)
 			bytes := runtime.Stack(trace, false)
-			progressLn("Failed to start for server ", r.settings.host, ": ", err, bytes, string(trace))
+			warningLn("Failed to start for server ", r.settings.host, ": ", err, bytes, string(trace))
 			if cmd != nil {
 				err := cmd.Process.Kill()
 				if err != nil {
-					progressLn("Could not kill ssh process for " + r.settings.host + ":" + err.Error())
+					warningLn("Could not kill ssh process for " + r.settings.host + ":" + err.Error())
 					// no action
 				}
 				err = cmd.Wait()
 				if err != nil {
-					progressLn("Could not wait ssh process for " + r.settings.host + ":" + err.Error())
+					warningLn("Could not wait ssh process for " + r.settings.host + ":" + err.Error())
 				}
 			}
 
 			go func() {
 				time.Sleep(RETRY_INTERVAL)
-				progressLn("Reconnecting to " + r.settings.host)
+				warningLn("Reconnecting to " + r.settings.host)
 				r.startServer()
 			}()
 		}
@@ -95,7 +94,7 @@ func (r *Client) startServer() {
 		unrealsyncBinaryPath = r.settings.dir + "/.unrealsync/unrealsync"
 	}
 
-	cmd, stdin, stdout = r.launchUnrealsyncAt(unrealsyncBinaryPath)
+	cmd, stdin, stdout, stderr = r.launchUnrealsyncAt(unrealsyncBinaryPath)
 
 	stream := make(chan BufBlocker)
 	// receive from singlestdinwriter (stream) and send into ssh stdin
@@ -105,13 +104,23 @@ func (r *Client) startServer() {
 	go doSendChanges(stream, r.settings.host, r.stopCh, r.errorCh)
 	// read ssh stdout and send into ssh stdin via singlestdinwriter (stream)
 	go pingReplyThread(stdout, r.settings.host, stream, r.errorCh)
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := stderr.Read(buf)
+			if err != nil {
+				break
+			}
+			progressWithout(string(buf[0:n]))
+		}
+	}()
 
 	err := <-r.errorCh
 	close(r.stopCh)
 	panic(err)
 }
 
-func (r *Client) launchUnrealsyncAt(unrealsyncBinaryPath string) (*exec.Cmd, io.WriteCloser, io.ReadCloser) {
+func (r *Client) launchUnrealsyncAt(unrealsyncBinaryPath string) (*exec.Cmd, io.WriteCloser, io.ReadCloser, io.ReadCloser) {
 	progressLn("Launching unrealsync at " + r.settings.host + "...")
 
 	args := sshOptions(r.settings)
@@ -143,12 +152,15 @@ func (r *Client) launchUnrealsyncAt(unrealsyncBinaryPath string) (*exec.Cmd, io.
 		fatalLn("Cannot get stdin pipe: ", err.Error())
 	}
 
-	cmd.Stderr = os.Stderr
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		fatalLn("Cannot get stdin pipe: ", err.Error())
+	}
 
 	if err = cmd.Start(); err != nil {
 		panic("Cannot start command ssh " + strings.Join(args, " ") + ": " + err.Error())
 	}
-	return cmd, stdin, stdout
+	return cmd, stdin, stdout, stderr
 }
 
 func (r *Client) createDirectoriesAt() (ostype, osarch, unrealsyncBinaryPath, unrealsyncVersion string) {
@@ -204,7 +216,7 @@ func pingReplyThread(stdout io.ReadCloser, hostname string, stream chan BufBlock
 func (r *Client) notifySendQueueSize(sendQueueSize int64) (err error) {
 	if r.settings.sendQueueSizeLimit != 0 && sendQueueSize > r.settings.sendQueueSizeLimit {
 		err = errors.New("SendQueueSize limit exceeded for " + r.settings.host)
-		progressLn(err)
+		warningLn(err)
 		select {
 		case r.errorCh <- err:
 		default:

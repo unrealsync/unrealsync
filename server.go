@@ -87,7 +87,7 @@ func applyDiff(buf []byte) {
 			err := os.RemoveAll(string(file))
 			if err != nil {
 				// TODO: better error handling than just print :)
-				progressLn("Cannot remove ", string(file))
+				warningLn("Cannot remove ", string(file))
 			}
 			dirs[dir][path.Base(fileStr)] = nil
 		} else {
@@ -272,27 +272,27 @@ func writeContents(file string, unrealStat UnrealStat, contents []byte) {
 		// file already exists, we must delete it if it is symlink or dir because of inability to make atomic rename
 		if stat.IsDir() != unrealStat.isDir || stat.Mode()&os.ModeSymlink == os.ModeSymlink {
 			if err = os.RemoveAll(file); err != nil {
-				progressLn("Cannot remove ", file, ": ", err.Error())
+				warningLn("Cannot remove ", file, ": ", err.Error())
 				return
 			}
 		}
 	} else if !os.IsNotExist(err) {
-		progressLn("Error doing lstat for ", file, ": ", err.Error())
+		warningLn("Error doing lstat for ", file, ": ", err.Error())
 		return
 	}
 
 	if unrealStat.isDir {
 		if err = os.MkdirAll(file, 0777); err != nil {
-			progressLn("Cannot create dir ", file, ": ", err.Error())
+			warningLn("Cannot create dir ", file, ": ", err.Error())
 			return
 		}
 		if err = os.Chmod(file, os.FileMode(unrealStat.mode)); err != nil {
-			progressLn("Cannot chmod dir ", file, ": ", err.Error())
+			warningLn("Cannot chmod dir ", file, ": ", err.Error())
 			return
 		}
 	} else if unrealStat.isLink {
 		if err = os.Symlink(string(contents), file); err != nil {
-			progressLn("Cannot create symlink ", file, ": ", err.Error())
+			warningLn("Cannot create symlink ", file, ": ", err.Error())
 			return
 		}
 	} else {
@@ -305,19 +305,19 @@ func writeFile(file string, unrealStat UnrealStat, contents []byte) {
 
 	fp, err := os.OpenFile(tempnam, os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.FileMode(unrealStat.mode))
 	if err != nil {
-		progressLn("Cannot open ", tempnam)
+		warningLn("Cannot open ", tempnam)
 		return
 	}
 
 	if _, err = fp.Write(contents); err != nil {
 		// TODO: more accurate error handling
-		progressLn("Cannot write contents to ", tempnam, ": ", err.Error())
+		warningLn("Cannot write contents to ", tempnam, ": ", err.Error())
 		fp.Close()
 		return
 	}
 
 	if err = fp.Chmod(os.FileMode(unrealStat.mode)); err != nil {
-		progressLn("Cannot chmod ", tempnam, ": ", err.Error())
+		warningLn("Cannot chmod ", tempnam, ": ", err.Error())
 		fp.Close()
 		return
 	}
@@ -326,17 +326,17 @@ func writeFile(file string, unrealStat UnrealStat, contents []byte) {
 
 	dir := path.Dir(file)
 	if err = os.MkdirAll(dir, 0777); err != nil {
-		progressLn("Cannot create dir ", dir, ": ", err.Error())
+		warningLn("Cannot create dir ", dir, ": ", err.Error())
 		os.Remove(tempnam)
 		return
 	}
 
 	if err = os.Chtimes(tempnam, time.Unix(unrealStat.mtime, 0), time.Unix(unrealStat.mtime, 0)); err != nil {
-		progressLn("Failed to change modification time for ", file, ": ", err.Error())
+		warningLn("Failed to change modification time for ", file, ": ", err.Error())
 	}
 
 	if err = os.Rename(tempnam, file); err != nil {
-		progressLn("Cannot rename ", tempnam, " to ", file)
+		warningLn("Cannot rename ", tempnam, " to ", file)
 		os.Remove(tempnam)
 		return
 	}
@@ -351,7 +351,7 @@ func timeoutThread() {
 		select {
 		case <-rcvchan:
 		case <-time.After(PING_INTERVAL * 2):
-			progressLn("Server timeout")
+			warningLn("Server timeout")
 			os.Exit(1)
 		}
 	}

@@ -9,29 +9,47 @@ import (
 	"time"
 )
 
-func _progress(a []interface{}, withEol bool) {
-	repeatLen := 15 - len(hostname)
-	if repeatLen <= 0 {
-		repeatLen = 1
-	}
-	now := time.Now()
+var Log [1000]string
+var LogHead int
 
-	msg := "\r\033[2K"
-	msg += fmt.Sprintf("%s.%09d ", now.Format("15:04:05"), now.Nanosecond())
-	msg += fmt.Sprint(" ", hostname, "$ ", strings.Repeat(" ", repeatLen))
+func progress(a []interface{}, withPref bool, andErr bool) {
+	msg := ""
+	if withPref {
+		repeatLen := 15 - len(hostname)
+		if repeatLen <= 0 {
+			repeatLen = 1
+		}
+		now := time.Now()
+
+		msg += fmt.Sprintf("%s.%09d ", now.Format("15:04:05"), now.Nanosecond()) +
+			fmt.Sprint(" ", hostname, "$ ", strings.Repeat(" ", repeatLen))
+	}
 	msg += fmt.Sprint(a...)
-	if withEol {
-		msg += fmt.Sprint("\n")
+	if withPref {
+		msg += "\n"
 	}
-	fmt.Fprint(os.Stderr, msg)
+
+	if isServer || andErr {
+		fmt.Fprint(os.Stderr, msg)
+	}
+	if !isServer {
+		if LogHead >= len(Log) {
+			LogHead = 0
+		}
+		Log[LogHead] = msg
+		LogHead++
+	}
 }
 
-func progress(a ...interface{}) {
-	_progress(a, false)
+func progressWithout(a ...interface{}) {
+	progress(a, false, false)
 }
-
 func progressLn(a ...interface{}) {
-	_progress(a, true)
+	progress(a, true, false)
+}
+
+func warningLn(a ...interface{}) {
+	progress(a, true, true)
 }
 
 func fatalLn(a ...interface{}) {
@@ -81,15 +99,15 @@ func execOrPanic(cmd string, args []string, cancelCh chan bool) string {
 		if !open {
 			err := command.Process.Kill()
 			if err != nil {
-				progressLn("Could not kill process on cancel:", cmd, args)
+				warningLn("Could not kill process on cancel:", cmd, args)
 			}
 		}
 	}()
 	output, err := command.Output()
 
 	if err != nil {
-		progressLn("Cannot ", cmd, " ", args, ", got error: ", err.Error())
-		progressLn("Command output:\n", string(output), "\nstderr:\n", bufErr.String())
+		warningLn("Cannot ", cmd, " ", args, ", got error: ", err.Error())
+		warningLn("Command output:\n", string(output), "\nstderr:\n", bufErr.String())
 		panic("Command exited with non-zero code")
 	}
 

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -188,45 +186,6 @@ doSendChangesLoop:
 		outLogReadPos[hostname] = pos
 		outLogMutex.Unlock()
 		debugLn("hostname:", hostname, " pos:", pos, " after reading", string(buf[0:10]))
-	}
-}
-
-func printStatusThread(clients map[string]*Client) {
-	var sendQueueSize int64
-	prevStatusesOk := false
-	mem := new(runtime.MemStats)
-	for {
-		statuses := make([]string, 0)
-
-		outLogMutex.Lock()
-		for hostname, oldSize := range outLogReadOldSize {
-			if oldSize != 0 {
-				sendQueueSize = oldSize - outLogReadPos[hostname] + outLogPos
-				statuses = append(statuses, hostname+" "+formatLength(int(sendQueueSize))+"*")
-			} else if outLogReadPos[hostname] != outLogPos {
-				sendQueueSize = outLogPos - outLogReadPos[hostname]
-				statuses = append(statuses, hostname+" "+formatLength(int(sendQueueSize)))
-			} else {
-				sendQueueSize = 0
-			}
-			if err := clients[hostname].notifySendQueueSize(sendQueueSize); err != nil {
-				progressLn("removing "+hostname+" from outLogReadOldSize")
-				delete(outLogReadOldSize, hostname)
-			}
-		}
-		outLogMutex.Unlock()
-
-		sort.Sort(SortableStrings(statuses))
-
-		runtime.ReadMemStats(mem)
-		if len(statuses) > 0 {
-			progress("Pending diffs: ", strings.Join(statuses, "; "))
-			prevStatusesOk = false
-		} else if !prevStatusesOk {
-			progress("All diffs were sent mem.Sys:", formatLength(int(mem.Sys)))
-			prevStatusesOk = true
-		}
-		time.Sleep(time.Millisecond * 300)
 	}
 }
 

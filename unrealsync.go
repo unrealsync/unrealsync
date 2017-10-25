@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	VERSION            = "1.0.1"
+	VERSION            = "1.0.2"
 	REPO_DIR           = ".unrealsync/"
 	REPO_CLIENT_CONFIG = REPO_DIR + "client_config"
 	REPO_TMP           = REPO_DIR + "tmp/"
