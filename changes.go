@@ -3,16 +3,17 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/unrealsync/fswatcher"
 	"io"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
-	"strings"
-	"time"
-	"net/http"
 	"runtime"
 	"sort"
-	_ "net/http/pprof"
+	"strings"
+	"time"
+
+	"github.com/unrealsync/fswatcher"
 )
 
 var (
@@ -412,7 +413,7 @@ func doClient(servers map[string]Settings) {
 			i--
 		}
 	})
-	go http.ListenAndServe("127.0.0.1:6061", nil)
+	go http.ListenAndServe("0.0.0.0:6061", nil)
 
 	// read watcher
 	warningLn("Entering watcher loop http://127.0.0.1:6061")
