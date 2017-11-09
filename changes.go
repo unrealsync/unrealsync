@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"runtime"
 	"sort"
+	_ "net/http/pprof"
 )
 
 var (
