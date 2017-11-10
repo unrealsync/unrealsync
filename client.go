@@ -60,6 +60,7 @@ func (r *Client) startServer() {
 	var stdout, stderr io.ReadCloser
 	defer func() {
 		if err := recover(); err != nil {
+			close(r.stopCh)
 			trace := make([]byte, 10000)
 			bytes := runtime.Stack(trace, false)
 			warningLn("Failed to start for server ", r.settings.host, ": ", err, bytes, string(trace))
@@ -116,7 +117,6 @@ func (r *Client) startServer() {
 	}()
 
 	err := <-r.errorCh
-	close(r.stopCh)
 	panic(err)
 }
 
