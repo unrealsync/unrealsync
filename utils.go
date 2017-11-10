@@ -114,6 +114,13 @@ func execOrPanic(cmd string, args []string, cancelCh chan bool) string {
 	return string(output)
 }
 
+func sendErrorNonBlocking(errorCh chan error, err error) {
+	select {
+	case errorCh <- err:
+	default:
+	}
+}
+
 func formatLength(len int) string {
 	if len < 1024 {
 		return fmt.Sprintf("%d B", len)

@@ -116,6 +116,7 @@ func (r *Client) startServer() {
 	}()
 
 	err := <-r.errorCh
+	close(r.errorCh)
 	close(r.stopCh)
 	panic(err)
 }
@@ -191,7 +192,7 @@ func singleStdinWriter(stream chan BufBlocker, stdin io.WriteCloser, errorCh cha
 		_, err := stdin.Write(bufBlocker.buf)
 		bufBlocker.sent <- true
 		if err != nil {
-			errorCh <- err
+			sendErrorNonBlocking(errorCh, err)
 			break
 		}
 	}
@@ -204,7 +205,7 @@ func pingReplyThread(stdout io.ReadCloser, hostname string, stream chan BufBlock
 	for {
 		read_bytes, err := io.ReadFull(stdout, buf)
 		if err != nil {
-			errorCh <- errors.New("Could not read from server:" + hostname + " err:" + err.Error())
+			sendErrorNonBlocking(errorCh, errors.New("Could not read from server:"+hostname+" err:"+err.Error()))
 			break
 		}
 		debugLn("Read ", read_bytes, " from ", hostname, " ", buf)

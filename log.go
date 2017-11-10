@@ -153,19 +153,19 @@ doSendChangesLoop:
 		if err == io.EOF {
 			err = openOutLogForRead(hostname, false)
 			if err != nil {
-				errorCh <- err
+				sendErrorNonBlocking(errorCh, err)
 				break
 			}
 			continue
 		}
 		if err != nil {
-			errorCh <- err
+			sendErrorNonBlocking(errorCh, err)
 			break
 		}
 
 		pos, err = fp.Seek(0, os.SEEK_CUR)
 		if err != nil {
-			errorCh <- err
+			sendErrorNonBlocking(errorCh, err)
 			break
 		}
 
