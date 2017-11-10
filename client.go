@@ -189,9 +189,13 @@ func singleStdinWriter(stream chan BufBlocker, stdin io.WriteCloser, errorCh cha
 			break
 		}
 		_, err := stdin.Write(bufBlocker.buf)
-		bufBlocker.sent <- true
 		if err != nil {
 			sendErrorNonBlocking(errorCh, err)
+			break
+		}
+		select {
+		case bufBlocker.sent <- true:
+		case <-stopCh:
 			break
 		}
 	}
