@@ -116,7 +116,6 @@ func (r *Client) startServer() {
 	}()
 
 	err := <-r.errorCh
-	close(r.errorCh)
 	close(r.stopCh)
 	panic(err)
 }
