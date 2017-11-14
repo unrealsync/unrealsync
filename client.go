@@ -61,6 +61,7 @@ func (r *Client) startServer() {
 	var stdout io.ReadCloser
 	defer func() {
 		if err := recover(); err != nil {
+			close(r.stopCh)
 			trace := make([]byte, 10000)
 			bytes := runtime.Stack(trace, false)
 			progressLn("Failed to start for server ", r.settings.host, ": ", err, bytes, string(trace))
@@ -107,7 +108,6 @@ func (r *Client) startServer() {
 	go pingReplyThread(stdout, r.settings.host, stream, r.errorCh)
 
 	err := <-r.errorCh
-	close(r.stopCh)
 	panic(err)
 }
 
@@ -177,9 +177,13 @@ func singleStdinWriter(stream chan BufBlocker, stdin io.WriteCloser, errorCh cha
 			break
 		}
 		_, err := stdin.Write(bufBlocker.buf)
-		bufBlocker.sent <- true
 		if err != nil {
-			errorCh <- err
+			sendErrorNonBlocking(errorCh, err)
+			break
+		}
+		select {
+		case bufBlocker.sent <- true:
+		case <-stopCh:
 			break
 		}
 	}
@@ -192,7 +196,7 @@ func pingReplyThread(stdout io.ReadCloser, hostname string, stream chan BufBlock
 	for {
 		read_bytes, err := io.ReadFull(stdout, buf)
 		if err != nil {
-			errorCh <- errors.New("Could not read from server:" + hostname + " err:" + err.Error())
+			sendErrorNonBlocking(errorCh, errors.New("Could not read from server:"+hostname+" err:"+err.Error()))
 			break
 		}
 		debugLn("Read ", read_bytes, " from ", hostname, " ", buf)
@@ -205,7 +209,7 @@ func (r *Client) notifySendQueueSize(sendQueueSize int64) (err error) {
 	if r.settings.sendQueueSizeLimit != 0 && sendQueueSize > r.settings.sendQueueSizeLimit {
 		err = errors.New("SendQueueSize limit exceeded for " + r.settings.host)
 		progressLn(err)
-		r.errorCh <- err
+		sendErrorNonBlocking(r.errorCh, err)
 	}
 	return
 }

@@ -105,3 +105,10 @@ func formatLength(len int) string {
 		return fmt.Sprintf("%d MiB", len/1048576)
 	}
 }
+
+func sendErrorNonBlocking(errorCh chan error, err error) {
+	select {
+	case errorCh <- err:
+	default:
+	}
+}
