@@ -24,7 +24,7 @@ Build unrealsync, using "go get" on both your machine and target server(s) or us
 Usage
 ======
 
-Run `unrealsync /path/on/local/machine server1.lan:/path/on/server1 user@server2.lan:/path/on/server2`. For more info run `unrealsyn --help`
+Run `unrealsync /path/on/local/machine server1.lan:/path/on/server1 user@server2.lan:/path/on/server2`. For more info run `unrealsync --help`
 
 Unrealsync also supports per-folder config files. To use this feature create .unrealsync/client_config file in target directory and see Config section below.
 
