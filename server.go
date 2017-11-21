@@ -178,7 +178,7 @@ func applyThread(inStream io.ReadCloser) {
 func tmpBigName(filename string) string {
 	h := md5.New()
 	io.WriteString(h, filename)
-	return path.Join(repoPath, RepoTmp, "big_"+fmt.Sprintf("%x", h.Sum(nil)))
+	return path.Join(repoPath, repoTmp, "big_"+fmt.Sprintf("%x", h.Sum(nil)))
 }
 
 func processBigInit(buf []byte, bigFps map[string]BigFile) {
@@ -301,7 +301,7 @@ func writeContents(file string, unrealStat UnrealStat, contents []byte) {
 }
 
 func writeFile(file string, unrealStat UnrealStat, contents []byte) {
-	tempnam := RepoTmp + path.Base(file)
+	tempnam := repoTmp + path.Base(file)
 
 	fp, err := os.OpenFile(tempnam, os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.FileMode(unrealStat.mode))
 	if err != nil {

@@ -79,7 +79,7 @@ func writeToOutLog(action string, buf []byte) {
 }
 
 func createOutLog() {
-	logFilePath := getLogFilePath(RepoLogFilename)
+	logFilePath := getLogFilePath(repoLogFilename)
 	if outLogWriteFp != nil {
 		outLogWriteFp.Close()
 		os.Remove(logFilePath)
@@ -108,7 +108,7 @@ func openOutLogForRead(hostname string, continuation bool) (err error) {
 		}
 	}
 	progressLn("Opening log for ", hostname)
-	fp, err = os.Open(RepoLogFilename)
+	fp, err = os.Open(repoLogFilename)
 	if err != nil {
 		return
 	}

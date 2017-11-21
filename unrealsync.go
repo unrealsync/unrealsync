@@ -12,15 +12,15 @@ import (
 )
 
 const (
-	Version = "1.0.1"
+	version = "1.0.1"
 
 	// Files stored in repo folder
-	DefaultRepoDir        = ".unrealsync/"
-	RepoConfigFilename    = DefaultRepoDir + "client_config"
-	RepoTmp               = "tmp"
-	RepoLogFilename       = "out.log"
-	RepoPidFilename       = "pid"
-	RepoPidServerFilename = "pid_server"
+	defaultRepoDir        = ".unrealsync/"
+	repoConfigFilename    = defaultRepoDir + "client_config"
+	repoTmp               = "tmp"
+	repoLogFilename       = "out.log"
+	repoPidFilename       = "pid"
+	repoPidServerFilename = "pid_server"
 
 	DIFF_SEP = "\n------------\n"
 
@@ -136,7 +136,7 @@ func main() {
 	args := flag.Args()
 
 	if isVersion {
-		fmt.Println(Version)
+		fmt.Println(version)
 		os.Exit(0)
 	} else if len(args) > 0 {
 		var err error
@@ -146,7 +146,7 @@ func main() {
 				fatalLn(err)
 			}
 		} else {
-			repoPath = DefaultRepoDir
+			repoPath = defaultRepoDir
 		}
 		if err := os.Chdir(args[0]); err != nil {
 			fatalLn("Cannot chdir to ", args[0])
@@ -177,7 +177,7 @@ func main() {
 		progressLn("Unrealsync starting from ", sourceDir)
 	}
 
-	tmpFolder := path.Join(repoPath, RepoTmp)
+	tmpFolder := path.Join(repoPath, repoTmp)
 	os.RemoveAll(tmpFolder)
 
 	for _, dir := range []string{repoPath, tmpFolder} {
@@ -192,9 +192,9 @@ func main() {
 
 	var pidFilename string
 	if isServer {
-		pidFilename = path.Join(repoPath, RepoPidServerFilename)
+		pidFilename = path.Join(repoPath, repoPidServerFilename)
 	} else {
-		pidFilename = path.Join(repoPath, RepoPidFilename)
+		pidFilename = path.Join(repoPath, repoPidFilename)
 	}
 	writePidFileAndKillPrevious(pidFilename)
 
