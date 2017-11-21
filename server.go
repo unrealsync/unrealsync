@@ -301,7 +301,7 @@ func writeContents(file string, unrealStat UnrealStat, contents []byte) {
 }
 
 func writeFile(file string, unrealStat UnrealStat, contents []byte) {
-	tempnam := repoTmp + path.Base(file)
+	tempnam := path.Join(repoPath, repoTmp, path.Base(file))
 
 	fp, err := os.OpenFile(tempnam, os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.FileMode(unrealStat.mode))
 	if err != nil {

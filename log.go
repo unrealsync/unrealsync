@@ -108,7 +108,7 @@ func openOutLogForRead(hostname string, continuation bool) (err error) {
 		}
 	}
 	progressLn("Opening log for ", hostname)
-	fp, err = os.Open(repoLogFilename)
+	fp, err = os.Open(getLogFilePath(repoLogFilename))
 	if err != nil {
 		return
 	}
