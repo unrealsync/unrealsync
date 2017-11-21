@@ -78,7 +78,7 @@ func (r *Client) startServer() {
 			}
 
 			go func() {
-				time.Sleep(RETRY_INTERVAL)
+				time.Sleep(retryInterval)
 				progressLn("Reconnecting to " + r.settings.host)
 				r.startServer()
 			}()
@@ -191,7 +191,7 @@ func singleStdinWriter(stream chan BufBlocker, stdin io.WriteCloser, errorCh cha
 
 func pingReplyThread(stdout io.ReadCloser, hostname string, stream chan BufBlocker, errorCh chan error) {
 	bufBlocker := BufBlocker{buf: make([]byte, 20), sent: make(chan bool)}
-	bufBlocker.buf = []byte(ACTION_PONG + fmt.Sprintf("%10d", 0))
+	bufBlocker.buf = []byte(actionPong + fmt.Sprintf("%10d", 0))
 	buf := make([]byte, 10)
 	for {
 		read_bytes, err := io.ReadFull(stdout, buf)

@@ -46,9 +46,9 @@ func debugLn(a ...interface{}) {
 }
 
 func sshOptions(settings Settings) []string {
-	options := []string{"-o", fmt.Sprint("ConnectTimeout=", DEFAULT_CONNECT_TIMEOUT), "-o", "LogLevel=ERROR"}
-	options = append(options, "-o", fmt.Sprint("ServerAliveInterval=", SERVER_ALIVE_INTERVAL))
-	options = append(options, "-o", fmt.Sprint("ServerAliveCountMax=", SERVER_ALIVE_COUNT_MAX))
+	options := []string{"-o", fmt.Sprint("ConnectTimeout=", defaultConnectTimeout), "-o", "LogLevel=ERROR"}
+	options = append(options, "-o", fmt.Sprint("ServerAliveInterval=", serverAliveInterval))
+	options = append(options, "-o", fmt.Sprint("ServerAliveCountMax=", serverAliveCountMax))
 
 	// Batch mode settings for ssh to prevent it from asking its' stupid questions
 	if settings.batchMode {

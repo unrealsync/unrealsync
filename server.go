@@ -25,7 +25,7 @@ var excludes map[string]bool
 
 func applyDiff(buf []byte) {
 	var (
-		sepBytes = []byte(DIFF_SEP)
+		sepBytes = []byte(diffSep)
 		offset   = 0
 		endPos   = 0
 	)
@@ -113,7 +113,7 @@ func readResponse(inStream io.ReadCloser) []byte {
 		return buf
 	}
 
-	if length > MAX_DIFF_SIZE {
+	if length > maxDiffSize {
 		panic("Too big diff from " + hostname + ", probably communication error")
 	}
 
@@ -156,19 +156,19 @@ func applyThread(inStream io.ReadCloser) {
 
 		buf := readResponse(inStream)
 
-		if actionStr == ACTION_PING {
-			os.Stdout.Write([]byte(ACTION_PONG))
-		} else if actionStr == ACTION_DIFF {
+		if actionStr == actionPing {
+			os.Stdout.Write([]byte(actionPong))
+		} else if actionStr == actionDiff {
 			applyRemoteDiff(buf)
-		} else if actionStr == ACTION_BIG_INIT {
+		} else if actionStr == actionBigInit {
 			processBigInit(buf, bigFps)
-		} else if actionStr == ACTION_BIG_RCV {
+		} else if actionStr == actionBigRcv {
 			processBigRcv(buf, bigFps)
-		} else if actionStr == ACTION_BIG_COMMIT {
+		} else if actionStr == actionBigCommit {
 			processBigCommit(buf, bigFps)
-		} else if actionStr == ACTION_BIG_ABORT {
+		} else if actionStr == actionBigAbort {
 			processBigAbort(buf, bigFps)
-		} else if actionStr == ACTION_PONG {
+		} else if actionStr == actionPong {
 		} else {
 			debugLn("Unknown action", actionStr)
 		}
@@ -350,7 +350,7 @@ func timeoutThread() {
 	for {
 		select {
 		case <-rcvchan:
-		case <-time.After(PING_INTERVAL * 2):
+		case <-time.After(pingInterval * 2):
 			progressLn("Server timeout")
 			os.Exit(1)
 		}
@@ -366,7 +366,7 @@ func doServer() {
 	go timeoutThread()
 	progressLn("Entering ping loop")
 	for {
-		os.Stdout.Write([]byte(ACTION_PING))
-		time.Sleep(PING_INTERVAL)
+		os.Stdout.Write([]byte(actionPing))
+		time.Sleep(pingInterval)
 	}
 }
