@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	ini "github.com/glacjay/goini"
+	"github.com/glacjay/goini"
 	"github.com/unrealsync/unrealsync/list"
 )
 
@@ -37,14 +37,14 @@ func parseServerSettings(section string, serverSettings map[string]string, exclu
 	if serverSettings["port"] != "" {
 		port, err = strconv.Atoi(serverSettings["port"])
 		if err != nil {
-			fatalLn("Cannot parse 'port' property in [" + section + "] section of " + REPO_CLIENT_CONFIG + ": " + err.Error())
+			fatalLn("Cannot parse 'port' property in [" + section + "] section of " + repoConfigFilename + ": " + err.Error())
 		}
 	}
 
 	if serverSettings["send-queue-size-limit"] != "" {
 		sendQueueSizeLimit, err = strconv.Atoi(serverSettings["send-queue-size-limit"])
 		if err != nil {
-			fatalLn("Cannot parse 'send-queue-size-limit' property in [" + section + "] section of " + REPO_CLIENT_CONFIG + ": " + err.Error())
+			fatalLn("Cannot parse 'send-queue-size-limit' property in [" + section + "] section of " + repoConfigFilename + ": " + err.Error())
 		}
 	}
 
@@ -65,8 +65,8 @@ func parseServerSettings(section string, serverSettings map[string]string, exclu
 		host = section
 	}
 
-	batchMode := (serverSettings["batchmode"] != "false")
-	compression := (serverSettings["compression"] != "false")
+	batchMode := serverSettings["batchmode"] != "false"
+	compression := serverSettings["compression"] != "false"
 
 	return Settings{
 		localExcludes,
@@ -97,7 +97,7 @@ func parseExcludes(excl string) map[string]bool {
 func parseConfig() (servers map[string]Settings, excludes map[string]bool) {
 	servers = make(map[string]Settings)
 	excludes = make(map[string]bool)
-	dict, err := ini.Load(REPO_CLIENT_CONFIG)
+	dict, err := ini.Load(repoConfigFilename)
 
 	if err != nil {
 		fatalLn("Cannot parse client_config file: ", err)
@@ -105,7 +105,7 @@ func parseConfig() (servers map[string]Settings, excludes map[string]bool) {
 
 	general, ok := dict[GENERAL_SECTION]
 	if !ok {
-		fatalLn("Section " + GENERAL_SECTION + " of config file " + REPO_CLIENT_CONFIG + " is empty")
+		fatalLn("Section " + GENERAL_SECTION + " of config file " + repoConfigFilename + " is empty")
 	}
 
 	excludes[".unrealsync"] = true
@@ -125,7 +125,7 @@ func parseConfig() (servers map[string]Settings, excludes map[string]bool) {
 	for key, serverSettings := range dict {
 		if key == "" {
 			if len(serverSettings) > 0 {
-				progressLn("You should not have top-level settings in " + REPO_CLIENT_CONFIG)
+				progressLn("You should not have top-level settings in " + repoConfigFilename)
 			}
 			continue
 		}
