@@ -90,7 +90,7 @@ func (r *Client) startServer() {
 	progressLn("Discovered ostype:" + ostype + " osarch:" + osarch + " binary:" + unrealsyncBinaryPath + " version:" + unrealsyncVersion + " at " + r.settings.host)
 	if r.settings.remoteBinPath != "" {
 		unrealsyncBinaryPath = r.settings.remoteBinPath
-	} else if unrealsyncBinaryPath == "" || unrealsyncVersion != VERSION {
+	} else if unrealsyncBinaryPath == "" || unrealsyncVersion != Version {
 		unrealsyncBinaryPathForHost := unrealsyncDir + "/unrealsync-" + ostype + "-" + osarch
 		r.copyUnrealsyncBinaries(unrealsyncBinaryPathForHost)
 		unrealsyncBinaryPath = r.settings.dir + "/.unrealsync/unrealsync"

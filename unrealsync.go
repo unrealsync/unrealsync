@@ -12,13 +12,15 @@ import (
 )
 
 const (
-	VERSION            = "1.0.1"
-	REPO_DIR           = ".unrealsync/"
-	REPO_CLIENT_CONFIG = REPO_DIR + "client_config"
-	REPO_TMP           = REPO_DIR + "tmp/"
-	REPO_LOG_FILENAME  = REPO_DIR + "out.log"
-	REPO_PID           = REPO_DIR + "pid"
-	REPO_PID_SERVER    = REPO_DIR + "pid_server"
+	Version = "1.0.1"
+
+	// Files stored in repo folder
+	DefaultRepoDir        = ".unrealsync/"
+	RepoConfigFilename    = DefaultRepoDir + "client_config"
+	RepoTmp               = "tmp"
+	RepoLogFilename       = "out.log"
+	RepoPidFilename       = "pid"
+	RepoPidServerFilename = "pid_server"
 
 	DIFF_SEP = "\n------------\n"
 
@@ -54,6 +56,7 @@ func (r *MultipleStringFlag) Set(value string) (err error) {
 var (
 	sourceDir        string
 	unrealsyncDir    string
+	repoPath         string
 	rcvchan          = make(chan bool)
 	isServer         = false
 	isDebug          = false
@@ -70,6 +73,7 @@ func init() {
 	flag.StringVar(&hostname, "hostname", "", "Internal parameter used on remote side")
 	flag.Var(&excludesFlag, "exclude", "Internal parameter used on remote side")
 	flag.StringVar(&forceServersFlag, "servers", "", "Perform sync only for specified servers")
+	flag.StringVar(&repoPath, "repo-path", "", "Store logs and pid file in specified folder")
 }
 
 func initUnrealsyncDir() string {
@@ -132,9 +136,18 @@ func main() {
 	args := flag.Args()
 
 	if isVersion {
-		fmt.Println(VERSION)
+		fmt.Println(Version)
 		os.Exit(0)
 	} else if len(args) > 0 {
+		var err error
+		if len(repoPath) != 0 {
+			repoPath, err = filepath.Abs(repoPath)
+			if err != nil {
+				fatalLn(err)
+			}
+		} else {
+			repoPath = DefaultRepoDir
+		}
 		if err := os.Chdir(args[0]); err != nil {
 			fatalLn("Cannot chdir to ", args[0])
 		}
@@ -143,8 +156,8 @@ func main() {
 			if len(parts) != 2 {
 				fatalLn("bad host:dir specification:" + args[i])
 			}
-			if host_user_parts := strings.Split(parts[0], "@"); len(host_user_parts) == 2 {
-				servers[parts[0]] = Settings{username: host_user_parts[0], host: host_user_parts[1], dir: parts[1]}
+			if hostUserParts := strings.Split(parts[0], "@"); len(hostUserParts) == 2 {
+				servers[parts[0]] = Settings{username: hostUserParts[0], host: hostUserParts[1], dir: parts[1]}
 			} else {
 				servers[parts[0]] = Settings{host: parts[0], dir: parts[1]}
 			}
@@ -164,9 +177,10 @@ func main() {
 		progressLn("Unrealsync starting from ", sourceDir)
 	}
 
-	os.RemoveAll(REPO_TMP)
+	tmpFolder := path.Join(repoPath, RepoTmp)
+	os.RemoveAll(tmpFolder)
 
-	for _, dir := range []string{REPO_DIR, REPO_TMP} {
+	for _, dir := range []string{repoPath, tmpFolder} {
 		_, err = os.Stat(dir)
 		if err != nil {
 			err = os.Mkdir(dir, 0777)
@@ -176,13 +190,13 @@ func main() {
 		}
 	}
 
-	var pid_filename string
+	var pidFilename string
 	if isServer {
-		pid_filename = REPO_PID_SERVER
+		pidFilename = path.Join(repoPath, RepoPidServerFilename)
 	} else {
-		pid_filename = REPO_PID
+		pidFilename = path.Join(repoPath, RepoPidFilename)
 	}
-	writePidFileAndKillPrevious(pid_filename)
+	writePidFileAndKillPrevious(pidFilename)
 
 	initializeLogs()
 

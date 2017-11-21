@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -46,6 +47,7 @@ func (r SortableStrings) Swap(i, j int) {
 }
 
 func initializeLogs() {
+
 	createOutLog()
 	outLogReadFps = make(map[string]*os.File)
 	outLogReadPos = make(map[string]int64)
@@ -61,7 +63,7 @@ func writeToOutLog(action string, buf []byte) {
 		fatalLn(err)
 	}
 
-	outLogPos, err = outLogWriteFp.Seek(0, os.SEEK_CUR)
+	outLogPos, err = outLogWriteFp.Seek(0, io.SeekCurrent)
 	debugLn("outlogpos:", outLogPos, " after action:", action)
 	if outLogPos > LOG_MAX_SIZE {
 		for _, oldSize := range outLogReadOldSize {
@@ -77,14 +79,15 @@ func writeToOutLog(action string, buf []byte) {
 }
 
 func createOutLog() {
+	logFilePath := getLogFilePath(RepoLogFilename)
 	if outLogWriteFp != nil {
 		outLogWriteFp.Close()
-		os.Remove(REPO_LOG_FILENAME)
+		os.Remove(logFilePath)
 	}
 	var err error
-	outLogWriteFp, err = os.OpenFile(REPO_LOG_FILENAME, os.O_APPEND|os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0666)
+	outLogWriteFp, err = os.OpenFile(logFilePath, os.O_APPEND|os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0666)
 	if err != nil {
-		fatalLn("Cannot open ", REPO_LOG_FILENAME, ": ", err.Error())
+		fatalLn("Cannot open ", logFilePath, ": ", err.Error())
 	}
 	for hostname, _ := range outLogReadOldSize {
 		// invalidate readers
@@ -105,14 +108,14 @@ func openOutLogForRead(hostname string, continuation bool) (err error) {
 		}
 	}
 	progressLn("Opening log for ", hostname)
-	fp, err = os.Open(REPO_LOG_FILENAME)
+	fp, err = os.Open(RepoLogFilename)
 	if err != nil {
 		return
 	}
 	outLogReadFps[hostname] = fp
 
 	if continuation {
-		_, err = fp.Seek(outLogPos, os.SEEK_SET)
+		_, err = fp.Seek(outLogPos, io.SeekStart)
 		if err != nil {
 			return
 		}
@@ -210,7 +213,7 @@ func printStatusThread(clients map[string]*Client) {
 				sendQueueSize = 0
 			}
 			if err := clients[hostname].notifySendQueueSize(sendQueueSize); err != nil {
-				progressLn("removing "+hostname+" from outLogReadOldSize")
+				progressLn("removing " + hostname + " from outLogReadOldSize")
 				delete(outLogReadOldSize, hostname)
 			}
 		}
@@ -276,4 +279,8 @@ func readLogEntry(fp *os.File, buf []byte) (bufLen int, err error) {
 	}
 	bufLen = 20 + diffLen
 	return
+}
+
+func getLogFilePath(relativePath string) string {
+	return filepath.Join(repoPath, relativePath)
 }
