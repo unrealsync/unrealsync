@@ -9,7 +9,7 @@ import (
 	"github.com/unrealsync/unrealsync/list"
 )
 
-const GENERAL_SECTION = "general_settings"
+const generalSection = "general_settings"
 
 type Settings struct {
 	excludes map[string]bool
@@ -103,9 +103,9 @@ func parseConfig() (servers map[string]Settings, excludes map[string]bool) {
 		fatalLn("Cannot parse client_config file: ", err)
 	}
 
-	general, ok := dict[GENERAL_SECTION]
+	general, ok := dict[generalSection]
 	if !ok {
-		fatalLn("Section " + GENERAL_SECTION + " of config file " + repoConfigFilename + " is empty")
+		fatalLn("Section " + generalSection + " of config file " + repoConfigFilename + " is empty")
 	}
 
 	excludes[".unrealsync"] = true
@@ -120,7 +120,7 @@ func parseConfig() (servers map[string]Settings, excludes map[string]bool) {
 		forceServers = forceServersFlag
 	}
 
-	delete(dict, GENERAL_SECTION)
+	delete(dict, generalSection)
 
 	for key, serverSettings := range dict {
 		if key == "" {

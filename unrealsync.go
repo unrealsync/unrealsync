@@ -22,25 +22,25 @@ const (
 	repoPidFilename       = "pid"
 	repoPidServerFilename = "pid_server"
 
-	DIFF_SEP = "\n------------\n"
+	diffSep = "\n------------\n"
 
 	// all actions must be 10 symbols length
-	ACTION_PING       = "PING      "
-	ACTION_PONG       = "PONG      "
-	ACTION_DIFF       = "DIFF      "
-	ACTION_BIG_INIT   = "BIGINIT   "
-	ACTION_BIG_RCV    = "BIGRCV    "
-	ACTION_BIG_COMMIT = "BIGCOMMIT "
-	ACTION_BIG_ABORT  = "BIGABORT  "
+	actionPing      = "PING      "
+	actionPong      = "PONG      "
+	actionDiff      = "DIFF      "
+	actionBigInit   = "BIGINIT   "
+	actionBigRcv    = "BIGRCV    "
+	actionBigCommit = "BIGCOMMIT "
+	actionBigAbort  = "BIGABORT  "
 
-	MAX_DIFF_SIZE           = 2 * 1024 * 1204
-	DEFAULT_CONNECT_TIMEOUT = 10
-	RETRY_INTERVAL          = 10 * time.Second
-	SERVER_ALIVE_INTERVAL   = 3
-	SERVER_ALIVE_COUNT_MAX  = 4
+	maxDiffSize           = 2 * 1024 * 1204
+	defaultConnectTimeout = 10
+	retryInterval         = 10 * time.Second
+	serverAliveInterval   = 3
+	serverAliveCountMax   = 4
 
-	PING_INTERVAL          = time.Minute
-	DIR_AGGREGATE_INTERVAL = 400 * time.Millisecond
+	pingInterval         = time.Minute
+	dirAggregateInterval = 400 * time.Millisecond
 )
 
 type MultipleStringFlag []string

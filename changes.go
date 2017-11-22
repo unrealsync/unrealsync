@@ -14,7 +14,7 @@ import (
 
 var (
 	repo         map[string]map[string]*UnrealStat
-	localDiff    [MAX_DIFF_SIZE]byte
+	localDiff    [maxDiffSize]byte
 	localDiffPtr int
 )
 
@@ -36,7 +36,7 @@ func commitDiff() {
 	}
 
 	buf := localDiff[0:localDiffPtr]
-	writeToOutLog(ACTION_DIFF, buf)
+	writeToOutLog(actionDiff, buf)
 
 	localDiffPtr = 0
 
@@ -44,9 +44,9 @@ func commitDiff() {
 }
 
 // Send big file in chunks:
-// ACTION_BIG_INIT  = filename
-// ACTION_BIG_RCV   = filename length (10 bytes) | filename | chunk contents
-// ACTION_BIG_ABORT = filename
+// actionBigInit  = filename
+// actionBigRcv   = filename length (10 bytes) | filename | chunk contents
+// actionBigAbort = filename
 func commitBigFile(fileStr string, stat *UnrealStat) {
 	progressLn("Sending big file: ", fileStr, " (", (stat.size / 1024 / 1024), " MiB)")
 
@@ -65,11 +65,11 @@ func commitBigFile(fileStr string, stat *UnrealStat) {
 
 	file := []byte(fileStr)
 
-	writeToOutLog(ACTION_BIG_INIT, file)
+	writeToOutLog(actionBigInit, file)
 	bytesLeft := stat.size
 
 	for {
-		buf := make([]byte, MAX_DIFF_SIZE/2)
+		buf := make([]byte, maxDiffSize/2)
 		bufOffset := 0
 
 		copy(buf[bufOffset:10], fmt.Sprintf("%010d", len(file)))
@@ -81,13 +81,13 @@ func commitBigFile(fileStr string, stat *UnrealStat) {
 		fileStat, err := fp.Stat()
 		if err != nil {
 			progressLn("Cannot stat ", fileStr, " that we are reading right now: ", err.Error())
-			writeToOutLog(ACTION_BIG_ABORT, []byte(file))
+			writeToOutLog(actionBigAbort, []byte(file))
 			return
 		}
 
 		if !StatsEqual(fileStat, *stat) {
 			progressLn("File ", fileStr, " has changed, aborting transfer")
-			writeToOutLog(ACTION_BIG_ABORT, []byte(file))
+			writeToOutLog(actionBigAbort, []byte(file))
 			return
 		}
 
@@ -95,24 +95,24 @@ func commitBigFile(fileStr string, stat *UnrealStat) {
 		if err != nil && err != io.EOF {
 			// if we were unable to read file that we just opened then probably there are some problems with the OS
 			progressLn("Cannot read ", file, ": ", err)
-			writeToOutLog(ACTION_BIG_ABORT, []byte(file))
+			writeToOutLog(actionBigAbort, []byte(file))
 			return
 		}
 
 		if n != len(buf)-bufOffset && int64(n) != bytesLeft {
 			progressLn("Read different number of bytes than expected from ", file)
-			writeToOutLog(ACTION_BIG_ABORT, []byte(file))
+			writeToOutLog(actionBigAbort, []byte(file))
 			return
 		}
 
-		writeToOutLog(ACTION_BIG_RCV, buf[0:bufOffset+n])
+		writeToOutLog(actionBigRcv, buf[0:bufOffset+n])
 
 		if bytesLeft -= int64(n); bytesLeft == 0 {
 			break
 		}
 	}
 
-	writeToOutLog(ACTION_BIG_COMMIT, []byte(fmt.Sprintf("%010d%s%s", len(file), fileStr, stat.Serialize())))
+	writeToOutLog(actionBigCommit, []byte(fmt.Sprintf("%010d%s%s", len(file), fileStr, stat.Serialize())))
 
 	progressLn("Big file ", fileStr, " successfully sent")
 
@@ -124,21 +124,21 @@ func addToDiff(file string, stat *UnrealStat) {
 	var buf, diffHeader []byte
 
 	if stat == nil {
-		diffHeader = []byte("D " + file + DIFF_SEP)
+		diffHeader = []byte("D " + file + diffSep)
 	} else {
-		diffHeader = []byte("A " + file + "\n" + stat.Serialize() + DIFF_SEP)
+		diffHeader = []byte("A " + file + "\n" + stat.Serialize() + diffSep)
 		if stat.isDir == false {
 			diffLen = stat.size
 		}
 	}
 
-	if diffLen > MAX_DIFF_SIZE/2 {
+	if diffLen > maxDiffSize/2 {
 		commitBigFile(file, stat)
 		return
 	}
 
-	if localDiffPtr+int(diffLen)+len(diffHeader) >= MAX_DIFF_SIZE-1 {
-		progressLn("Diff too big:", localDiffPtr+int(diffLen)+len(diffHeader), " >= ", MAX_DIFF_SIZE-1, " autocommit")
+	if localDiffPtr+int(diffLen)+len(diffHeader) >= maxDiffSize-1 {
+		progressLn("Diff too big:", localDiffPtr+int(diffLen)+len(diffHeader), " >= ", maxDiffSize-1, " autocommit")
 		commitDiff()
 	}
 
@@ -190,7 +190,7 @@ func addToDiff(file string, stat *UnrealStat) {
 
 func aggregateDirs(dirschan chan string, excludes map[string]bool) {
 	dirs := make(map[string]bool)
-	tick := time.Tick(DIR_AGGREGATE_INTERVAL)
+	tick := time.Tick(dirAggregateInterval)
 
 	for {
 		select {
@@ -342,8 +342,8 @@ func syncDir(dir string, recursive, sendChanges bool) {
 
 func pingThread() {
 	for {
-		writeToOutLog(ACTION_PING, []byte(""))
-		time.Sleep(PING_INTERVAL)
+		writeToOutLog(actionPing, []byte(""))
+		time.Sleep(pingInterval)
 	}
 }
 

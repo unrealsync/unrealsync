@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	LOG_MAX_SIZE = 50 * 1048576
+	logMaxSize = 50 * 1048576
 )
 
 type SortableStrings []string
@@ -65,7 +65,7 @@ func writeToOutLog(action string, buf []byte) {
 
 	outLogPos, err = outLogWriteFp.Seek(0, io.SeekCurrent)
 	debugLn("outlogpos:", outLogPos, " after action:", action)
-	if outLogPos > LOG_MAX_SIZE {
+	if outLogPos > logMaxSize {
 		for _, oldSize := range outLogReadOldSize {
 			if oldSize != 0 {
 				debugLn("could not reopen log, not all readers are reading from actual")
@@ -129,7 +129,7 @@ func openOutLogForRead(hostname string, continuation bool) (err error) {
 
 func doSendChanges(stream chan BufBlocker, hostname string, stopChan chan bool, errorCh chan error) {
 	var err error
-	buf := make([]byte, MAX_DIFF_SIZE+20) // MAX_DIFF_SIZE limits only diff itself, so extra action+len required, each 10 bytes
+	buf := make([]byte, maxDiffSize+20) // maxDiffSize limits only diff itself, so extra action+len required, each 10 bytes
 	var pos int64
 	var bufLen int
 	bufBlocker := BufBlocker{buf: buf, sent: make(chan bool)}
