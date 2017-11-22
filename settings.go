@@ -65,6 +65,10 @@ func parseServerSettings(section string, serverSettings map[string]string, exclu
 		host = section
 	}
 
+	if len(sudoUser) > 0 {
+		serverSettings["sudouser"] = sudoUser
+	}
+
 	batchMode := serverSettings["batchmode"] != "false"
 	compression := serverSettings["compression"] != "false"
 

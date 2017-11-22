@@ -57,6 +57,7 @@ var (
 	sourceDir        string
 	unrealsyncDir    string
 	repoPath         string
+	sudoUser         string
 	rcvchan          = make(chan bool)
 	isServer         = false
 	isDebug          = false
@@ -69,11 +70,12 @@ var (
 func init() {
 	flag.BoolVar(&isVersion, "version", false, "Show version")
 	flag.BoolVar(&isDebug, "debug", false, "Turn on debugging information")
-	flag.BoolVar(&isServer, "server", false, "Internal parameter used on remote side")
-	flag.StringVar(&hostname, "hostname", "", "Internal parameter used on remote side")
-	flag.Var(&excludesFlag, "exclude", "Internal parameter used on remote side")
+	flag.BoolVar(&isServer, "server", false, "(internal) Internal parameter used on remote side")
+	flag.StringVar(&hostname, "hostname", "", "(internal) Internal parameter used on remote side")
+	flag.Var(&excludesFlag, "exclude", "(internal) Internal parameter used on remote side")
 	flag.StringVar(&forceServersFlag, "servers", "", "Perform sync only for specified servers")
 	flag.StringVar(&repoPath, "repo-path", "", "Store logs and pid file in specified folder")
+	flag.StringVar(&sudoUser, "sudo-user", "", "Use this user to store files on the remote side")
 }
 
 func initUnrealsyncDir() string {
@@ -156,11 +158,16 @@ func main() {
 			if len(parts) != 2 {
 				fatalLn("bad host:dir specification:" + args[i])
 			}
+			var serverSettings Settings
 			if hostUserParts := strings.Split(parts[0], "@"); len(hostUserParts) == 2 {
-				servers[parts[0]] = Settings{username: hostUserParts[0], host: hostUserParts[1], dir: parts[1]}
+				serverSettings = Settings{username: hostUserParts[0], host: hostUserParts[1], dir: parts[1]}
 			} else {
-				servers[parts[0]] = Settings{host: parts[0], dir: parts[1]}
+				serverSettings = Settings{host: parts[0], dir: parts[1]}
 			}
+			if len(sudoUser) > 0 {
+				serverSettings.sudouser = sudoUser
+			}
+			servers[parts[0]] = serverSettings
 		}
 	}
 
