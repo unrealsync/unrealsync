@@ -157,7 +157,7 @@ func (r *Client) createDirectoriesAt() (ostype, osarch, unrealsyncBinaryPath, un
 	args := sshOptions(r.settings)
 	// TODO: escaping
 	dir := r.settings.dir + "/.unrealsync"
-	args = append(args, r.settings.host, "if [ ! -d "+dir+" ]; then mkdir -p "+dir+"; fi;"+
+	args = append(args, r.settings.host, "if [ ! -d "+dir+" ]; then mkdir -m a=rwx -p "+dir+"; fi;"+
 		"rm -f "+dir+"/unrealsync &&"+
 		"uname && uname -m && if ! which unrealsync 2>/dev/null ; then echo 'no-binary'; echo 'no-version';"+
 		"else unrealsync --version 2>/dev/null ; echo 'no-version' ; fi")
