@@ -1,18 +1,22 @@
 package main
 
 import (
+	"crypto/md5"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
 )
 
 type UnrealStat struct {
+	name   string
 	isDir  bool
 	isLink bool
 	mode   int16
 	mtime  int64
 	size   int64
+	hash   string
 }
 
 func (p UnrealStat) Serialize() (res string) {
@@ -28,36 +32,43 @@ func (p UnrealStat) Serialize() (res string) {
 	return
 }
 
-func StatsEqual(orig os.FileInfo, repo UnrealStat) bool {
-	if repo.isDir != orig.IsDir() {
-		debugLn(orig.Name(), " is not dir")
+func StatsEqual(newStat UnrealStat, oldStat UnrealStat) bool {
+	if newStat.isDir != oldStat.isDir {
+		debugLn(newStat.name, " is not dir")
 		return false
 	}
 
-	if repo.isLink != (orig.Mode()&os.ModeSymlink == os.ModeSymlink) {
-		debugLn(orig.Name(), " symlinks different")
+	if newStat.isLink != oldStat.isLink {
+		debugLn(newStat.name, " symlinks different")
 		return false
 	}
 
 	// TODO: better handle symlinks :)
 	// do not check filemode for symlinks because we cannot chmod them either
-	if !repo.isLink && (repo.mode&0777) != int16(uint32(orig.Mode())&0777) {
-		debugLn(orig.Name(), " modes different")
+	if !oldStat.isLink && (oldStat.mode&0777) != (newStat.mode&0777) {
+		debugLn(newStat.name, " modes different")
+		return false
+	}
+
+	if !oldStat.isDir && oldStat.size != newStat.size {
+		debugLn(newStat.name, " size different")
 		return false
 	}
 
 	// you cannot set mtime for a symlink and we do not set mtime for directories
-	if !repo.isLink && !repo.isDir && repo.mtime != orig.ModTime().Unix() {
-		debugLn(orig.Name(), " modification time different")
-		return false
-	}
-
-	if !repo.isDir && repo.size != orig.Size() {
-		debugLn(orig.Name(), " size different")
+	if !oldStat.isLink && !oldStat.isDir && oldStat.mtime != newStat.mtime && oldStat.hash != newStat.Hash() {
+		debugLn(newStat.name, " modification time and hash are different")
 		return false
 	}
 
 	return true
+}
+
+func (s *UnrealStat) Hash() string {
+	if s.hash == "" {
+		s.hash = computeMd5(s.name)
+	}
+	return s.hash
 }
 
 func UnrealStatUnserialize(input string) (result UnrealStat) {
@@ -79,12 +90,29 @@ func UnrealStatUnserialize(input string) (result UnrealStat) {
 	return
 }
 
-func UnrealStatFromStat(info os.FileInfo) UnrealStat {
+func UnrealStatFromStat(filePath string, info os.FileInfo) UnrealStat {
 	return UnrealStat{
+		filePath,
 		info.IsDir(),
-		(info.Mode()&os.ModeSymlink == os.ModeSymlink),
+		info.Mode()&os.ModeSymlink == os.ModeSymlink,
 		int16(uint32(info.Mode()) & 0777),
 		info.ModTime().Unix(),
 		info.Size(),
+		"",
 	}
+}
+
+func computeMd5(filePath string) string {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	hash := md5.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return ""
+	}
+
+	return string(hash.Sum(nil))
 }

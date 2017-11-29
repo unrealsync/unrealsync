@@ -85,7 +85,8 @@ func commitBigFile(fileStr string, stat *UnrealStat) {
 			return
 		}
 
-		if !StatsEqual(fileStat, *stat) {
+		newStat := UnrealStatFromStat(fileStr, fileStat)
+		if !StatsEqual(newStat, *stat) {
 			progressLn("File ", fileStr, " has changed, aborting transfer")
 			writeToOutLog(actionBigAbort, []byte(file))
 			return
@@ -314,12 +315,13 @@ func syncDir(dir string, recursive, sendChanges bool) {
 
 		for _, info := range res {
 			repoEl, ok := repoInfo[info.Name()]
-			if !ok || !StatsEqual(info, *repoEl) {
-				if info.IsDir() && (recursive || !ok || !repoEl.isDir) {
-					syncDir(dir+"/"+info.Name(), true, sendChanges)
-				}
+			filePath := filepath.Join(dir, info.Name())
+			unrealStat := UnrealStatFromStat(filepath.Join(dir, info.Name()), info)
 
-				unrealStat := UnrealStatFromStat(info)
+			if !ok || !StatsEqual(unrealStat, *repoEl) {
+				if info.IsDir() && (recursive || !ok || !repoEl.isDir) {
+					syncDir(filePath, true, sendChanges)
+				}
 
 				repoInfo[info.Name()] = &unrealStat
 
@@ -327,9 +329,11 @@ func syncDir(dir string, recursive, sendChanges bool) {
 				if !ok {
 					prefix = "Added: "
 				}
-				debugLn(prefix, dir, "/", info.Name())
+				debugLn(prefix, filePath)
 				if sendChanges {
-					addToDiff(dir+"/"+info.Name(), &unrealStat)
+					addToDiff(filePath, &unrealStat)
+				} else {
+					unrealStat.Hash() // to calculate hash when we initialize repository so that we will have some hashes on sync
 				}
 			}
 		}
