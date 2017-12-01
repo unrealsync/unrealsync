@@ -65,6 +65,7 @@ var (
 	hostname         = ""
 	excludesFlag     MultipleStringFlag
 	forceServersFlag = ""
+	hashCheck        = false
 )
 
 func init() {
@@ -76,6 +77,7 @@ func init() {
 	flag.StringVar(&forceServersFlag, "servers", "", "Perform sync only for specified servers")
 	flag.StringVar(&repoPath, "repo-path", "", "Store logs and pid file in specified folder")
 	flag.StringVar(&sudoUser, "sudo-user", "", "Use this user to store files on the remote side")
+	flag.BoolVar(&hashCheck, "hash-check", false, "Use md5 hashing to check if file content changed before syncing it")
 }
 
 func initUnrealsyncDir() string {

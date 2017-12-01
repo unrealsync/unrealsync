@@ -56,12 +56,20 @@ func StatsEqual(newStat UnrealStat, oldStat UnrealStat) bool {
 	}
 
 	// you cannot set mtime for a symlink and we do not set mtime for directories
-	if !oldStat.isLink && !oldStat.isDir && oldStat.mtime != newStat.mtime && oldStat.hash != newStat.Hash() {
+	if !oldStat.isLink && !oldStat.isDir && oldStat.mtime != newStat.mtime && !hashEqual(newStat, oldStat) {
 		debugLn(newStat.name, " modification time and hash are different")
 		return false
 	}
 
 	return true
+}
+
+func hashEqual(newStat UnrealStat, oldStat UnrealStat) bool {
+	if !hashCheck {
+		return false
+	}
+
+	return oldStat.hash == newStat.Hash()
 }
 
 func (s *UnrealStat) Hash() string {

@@ -332,7 +332,7 @@ func syncDir(dir string, recursive, sendChanges bool) {
 				debugLn(prefix, filePath)
 				if sendChanges {
 					addToDiff(filePath, &unrealStat)
-				} else {
+				} else if hashCheck { // todo: move repository initialization in separate method
 					unrealStat.Hash() // to calculate hash when we initialize repository so that we will have some hashes on sync
 				}
 			}
