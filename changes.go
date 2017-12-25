@@ -48,7 +48,7 @@ func commitDiff() {
 // actionBigRcv   = filename length (10 bytes) | filename | chunk contents
 // actionBigAbort = filename
 func commitBigFile(fileStr string, stat *UnrealStat) {
-	progressLn("Sending big file: ", fileStr, " (", (stat.size / 1024 / 1024), " MiB)")
+	progressLn("Sending big file: ", fileStr, " (", stat.size / 1024 / 1024, " MiB)")
 
 	fp, err := os.Open(fileStr)
 	if err != nil {
