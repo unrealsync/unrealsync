@@ -73,7 +73,7 @@ func init() {
 	flag.BoolVar(&isDebug, "debug", false, "Turn on debugging information")
 	flag.BoolVar(&isServer, "server", false, "(internal) Internal parameter used on remote side")
 	flag.StringVar(&hostname, "hostname", "", "(internal) Internal parameter used on remote side")
-	flag.Var(&excludesFlag, "exclude", "(internal) Internal parameter used on remote side")
+	flag.Var(&excludesFlag, "exclude", "Exclude specified path from sync. Also used as internal parameter on the remote side")
 	flag.StringVar(&forceServersFlag, "servers", "", "Perform sync only for specified servers")
 	flag.StringVar(&repoPath, "repo-path", "", "Store logs and pid file in specified folder")
 	flag.StringVar(&sudoUser, "sudo-user", "", "Use this user to store files on the remote side")
@@ -134,6 +134,7 @@ func writePidFileAndKillPrevious(pid_filename string) {
 
 func main() {
 	var err error
+	var globalExcludes map[string]bool
 	servers := make(map[string]Settings)
 
 	flag.Parse()
@@ -155,6 +156,13 @@ func main() {
 		if err := os.Chdir(args[0]); err != nil {
 			fatalLn("Cannot chdir to ", args[0])
 		}
+		if len(excludesFlag) > 0 {
+			globalExcludes = make(map[string]bool)
+			for _, exclude := range excludesFlag {
+				globalExcludes[exclude] = true
+			}
+			globalExcludes[".unrealsync"] = true
+		}
 		for i := 1; i < len(args); i++ {
 			parts := strings.Split(args[i], ":")
 			if len(parts) != 2 {
@@ -168,6 +176,12 @@ func main() {
 			}
 			if len(sudoUser) > 0 {
 				serverSettings.sudouser = sudoUser
+			}
+			if len(globalExcludes) > 0 {
+				serverSettings.excludes = make(map[string]bool)
+				for k, v := range globalExcludes {
+					serverSettings.excludes[k] = v
+				}
 			}
 			servers[parts[0]] = serverSettings
 		}
@@ -212,6 +226,6 @@ func main() {
 	if isServer {
 		doServer()
 	} else {
-		doClient(servers)
+		doClient(servers, globalExcludes)
 	}
 }
