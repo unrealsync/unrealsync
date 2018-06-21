@@ -183,7 +183,7 @@ func main() {
 					serverSettings.excludes[k] = v
 				}
 			}
-			servers[parts[0]] = serverSettings
+			servers[serverSettings.host] = serverSettings
 		}
 	}
 
