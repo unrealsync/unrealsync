@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"strconv"
 )
 
 func _progress(a []interface{}, withEol bool) {
@@ -111,4 +112,32 @@ func sendErrorNonBlocking(errorCh chan error, err error) {
 	case errorCh <- err:
 	default:
 	}
+}
+
+func isCompatibleVersions(first, second string) bool {
+	firstIntVersion, err := versionToIntArray(first)
+	if err != nil {
+		return false
+	}
+	secondIntVersion, err := versionToIntArray(second)
+	if err != nil {
+		return false
+	}
+	if len(firstIntVersion) < 2 || len(secondIntVersion) < 2 {
+		return false
+	}
+	return firstIntVersion[0] == secondIntVersion[0] && firstIntVersion[1] == secondIntVersion[1]
+}
+
+func versionToIntArray(version string) ([]int, error) {
+	stringVersion := strings.Split(version, ".")
+	intVersion := make([]int, len(stringVersion))
+	for k, stringPart := range stringVersion {
+		intPart, err := strconv.Atoi(stringPart)
+		if err != nil {
+			return []int{}, err
+		}
+		intVersion[k] = intPart
+	}
+	return intVersion, nil
 }
