@@ -26,7 +26,7 @@ func (r *Client) initialServerSync() (err error) {
 
 	// TODO: escaping
 	args := []string{"-e", "ssh " + strings.Join(sshOptions(r.settings), " ")}
-	for dir, _ := range r.settings.excludes {
+	for dir := range r.settings.excludes {
 		args = append(args, "--exclude="+dir)
 	}
 
@@ -120,7 +120,7 @@ func (r *Client) launchUnrealsyncAt(unrealsyncBinaryPath string) (*exec.Cmd, io.
 	if isDebug {
 		flags += " --debug"
 	}
-	for dir, _ := range r.settings.excludes {
+	for dir := range r.settings.excludes {
 		flags += " --exclude " + dir
 	}
 
@@ -194,12 +194,12 @@ func pingReplyThread(stdout io.ReadCloser, hostname string, stream chan BufBlock
 	bufBlocker.buf = []byte(actionPong + fmt.Sprintf("%10d", 0))
 	buf := make([]byte, 10)
 	for {
-		read_bytes, err := io.ReadFull(stdout, buf)
+		readBytes, err := io.ReadFull(stdout, buf)
 		if err != nil {
 			sendErrorNonBlocking(errorCh, errors.New("Could not read from server:"+hostname+" err:"+err.Error()))
 			break
 		}
-		debugLn("Read ", read_bytes, " from ", hostname, " ", buf)
+		debugLn("Read ", readBytes, " from ", hostname, " ", buf)
 		stream <- bufBlocker
 		<-bufBlocker.sent
 	}

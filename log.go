@@ -89,7 +89,7 @@ func createOutLog() {
 	if err != nil {
 		fatalLn("Cannot open ", logFilePath, ": ", err.Error())
 	}
-	for hostname, _ := range outLogReadOldSize {
+	for hostname := range outLogReadOldSize {
 		// invalidate readers
 		outLogReadOldSize[hostname] = outLogPos
 	}
@@ -168,7 +168,7 @@ doSendChangesLoop:
 			break
 		}
 
-		pos, err = fp.Seek(0, os.SEEK_CUR)
+		pos, err = fp.Seek(0, io.SeekCurrent)
 		if err != nil {
 			sendErrorNonBlocking(errorCh, err)
 			break

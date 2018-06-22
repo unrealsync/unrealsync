@@ -205,7 +205,7 @@ func aggregateDirs(dirschan chan string, excludes map[string]bool) {
 				continue
 			}
 
-			for dir, _ := range dirs {
+			for dir := range dirs {
 				progressLn("Changed dir: ", dir)
 				syncDir(dir, false, true)
 			}
@@ -237,7 +237,7 @@ func getPathToSync(path string, excludes map[string]bool) (string, error) {
 		path = filepath.Dir(path)
 	}
 	if pathIsGlobalExcluded(path, excludes) {
-		return "", errors.New("Excluded folder change")
+		return "", errors.New("excluded folder change")
 	}
 	return path, nil
 }
@@ -289,7 +289,7 @@ func syncDir(dir string, recursive, sendChanges bool) {
 	}
 
 	// Detect deletions: we need to do it first because otherwise change from dir to file will be impossible
-	for name, _ := range repoInfo {
+	for name := range repoInfo {
 		_, err := os.Lstat(dir + "/" + name)
 		if os.IsNotExist(err) {
 			delete(repoInfo, name)

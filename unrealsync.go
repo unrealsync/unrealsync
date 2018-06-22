@@ -104,12 +104,12 @@ func initUnrealsyncDir() string {
 	return dir
 }
 
-func writePidFileAndKillPrevious(pid_filename string) {
-	if pid_file, err := os.Open(pid_filename); err == nil {
+func writePidFileAndKillPrevious(pidFilename string) {
+	if pidFile, err := os.Open(pidFilename); err == nil {
 		var pid int
-		_, err = fmt.Fscanf(pid_file, "%d", &pid)
+		_, err = fmt.Fscanf(pidFile, "%d", &pid)
 		if err != nil {
-			fatalLn("Cannot read pid from " + pid_filename + ": " + err.Error())
+			fatalLn("Cannot read pid from " + pidFilename + ": " + err.Error())
 		}
 
 		proc, err := os.FindProcess(pid)
@@ -117,18 +117,18 @@ func writePidFileAndKillPrevious(pid_filename string) {
 			proc.Kill()
 		}
 
-		pid_file.Close()
+		pidFile.Close()
 	}
 
-	pid_file, err := os.OpenFile(pid_filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
-	defer pid_file.Close()
+	pidFile, err := os.OpenFile(pidFilename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
+	defer pidFile.Close()
 	if err != nil {
-		fatalLn("Cannot open " + pid_filename + " for writing: " + err.Error())
+		fatalLn("Cannot open " + pidFilename + " for writing: " + err.Error())
 	}
 
-	_, err = fmt.Fprint(pid_file, os.Getpid())
+	_, err = fmt.Fprint(pidFile, os.Getpid())
 	if err != nil {
-		fatalLn("Cannot write current pid to " + pid_filename + ": " + err.Error())
+		fatalLn("Cannot write current pid to " + pidFilename + ": " + err.Error())
 	}
 }
 

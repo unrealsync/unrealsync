@@ -19,16 +19,16 @@ type UnrealStat struct {
 	hash   string
 }
 
-func (p UnrealStat) Serialize() (res string) {
+func (s UnrealStat) Serialize() (res string) {
 	res = ""
-	if p.isDir {
+	if s.isDir {
 		res += "dir "
 	}
-	if p.isLink {
+	if s.isLink {
 		res += "symlink "
 	}
 
-	res += fmt.Sprintf("mode=%o mtime=%d size=%v", p.mode, p.mtime, p.size)
+	res += fmt.Sprintf("mode=%o mtime=%d size=%v", s.mode, s.mtime, s.size)
 	return
 }
 
