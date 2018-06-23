@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func _progress(a []interface{}, withEol bool) {
-	repeatLen := 15 - len(hostname)
+func _progress(prefix string, a []interface{}, withEol bool) {
+	repeatLen := 15 - len(prefix)
 	if repeatLen <= 0 {
 		repeatLen = 1
 	}
@@ -19,7 +19,7 @@ func _progress(a []interface{}, withEol bool) {
 
 	msg := "\r\033[2K"
 	msg += fmt.Sprintf("%s.%09d ", now.Format("15:04:05"), now.Nanosecond())
-	msg += fmt.Sprint(" ", hostname, "$ ", strings.Repeat(" ", repeatLen))
+	msg += fmt.Sprint(" ", prefix, "$ ", strings.Repeat(" ", repeatLen))
 	msg += fmt.Sprint(a...)
 	if withEol {
 		msg += fmt.Sprint("\n")
@@ -28,11 +28,15 @@ func _progress(a []interface{}, withEol bool) {
 }
 
 func progress(a ...interface{}) {
-	_progress(a, false)
+	_progress(hostname, a, false)
 }
 
 func progressLn(a ...interface{}) {
-	_progress(a, true)
+	_progress(hostname, a, true)
+}
+
+func progressWithPrefix(prefix string, a ...interface{}) {
+	_progress(prefix, a, false)
 }
 
 func fatalLn(a ...interface{}) {

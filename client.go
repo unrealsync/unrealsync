@@ -63,17 +63,23 @@ func (r *Client) startServer() {
 		if err := recover(); err != nil {
 			close(r.stopCh)
 			trace := make([]byte, 10000)
-			bytes := runtime.Stack(trace, false)
-			progressLn("Failed to start for server ", r.settings.host, ": ", err, bytes, string(trace))
+			runtime.Stack(trace, false)
+			progressWithPrefix("ERROR", "Stopped for server ", r.settings.host, ": ", err, "\n")
+			debugLn("Trace for ", r.settings.host, ":\n", string(trace))
 			if cmd != nil {
 				err := cmd.Process.Kill()
 				if err != nil {
-					progressLn("Could not kill ssh process for " + r.settings.host + ":" + err.Error())
+					progressLn("Could not kill ssh process for " + r.settings.host + ": " + err.Error())
 					// no action
 				}
 				err = cmd.Wait()
 				if err != nil {
-					progressLn("Could not wait ssh process for " + r.settings.host + ":" + err.Error())
+					// we will have ExitError if we killed process or if it failed to start
+					// We can't provide any additional information here if process failed to start
+					// since we already linked command's stderr to the os.Stderr and captured command's output
+					if _, ok := err.(*exec.ExitError); !ok {
+						progressLn("Could not wait ssh process for " + r.settings.host + ":" + err.Error())
+					}
 				}
 			}
 
@@ -196,7 +202,7 @@ func pingReplyThread(stdout io.ReadCloser, hostname string, stream chan BufBlock
 	for {
 		readBytes, err := io.ReadFull(stdout, buf)
 		if err != nil {
-			sendErrorNonBlocking(errorCh, errors.New("Could not read from server:"+hostname+" err:"+err.Error()))
+			sendErrorNonBlocking(errorCh, errors.New("Could not read from server: "+hostname+" err:"+err.Error()))
 			break
 		}
 		debugLn("Read ", readBytes, " from ", hostname, " ", buf)
