@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 )
 
 func _progress(a []interface{}, withEol bool) {
@@ -77,16 +77,28 @@ func execOrPanic(cmd string, args []string, cancelCh chan bool) string {
 	command := exec.Command(cmd, args...)
 	command.Stderr = &bufErr
 
+	commandFinished := make(chan bool)
 	go func() {
-		_, open := <-cancelCh
-		if !open {
-			err := command.Process.Kill()
-			if err != nil {
-				progressLn("Could not kill process on cancel:", cmd, args)
+		for {
+			select {
+			case _, open := <-cancelCh:
+				if !open {
+					err := command.Process.Kill()
+					if err != nil {
+						progressLn("Could not kill process on cancel:", cmd, args)
+					}
+					return
+				}
+			case _, open := <-commandFinished:
+				if !open {
+					return
+				}
+			default:
 			}
 		}
 	}()
 	output, err := command.Output()
+	close(commandFinished)
 
 	if err != nil {
 		progressLn("Cannot ", cmd, " ", args, ", got error: ", err.Error())
