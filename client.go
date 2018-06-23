@@ -24,7 +24,6 @@ func MakeClient(settings Settings) *Client {
 func (r *Client) initialServerSync() (err error) {
 	progressLn("Initial file sync using rsync at " + r.settings.host + "...")
 
-	// TODO: escaping
 	args := []string{"-e", "ssh " + strings.Join(sshOptions(r.settings), " ")}
 	for dir := range r.settings.excludes {
 		args = append(args, "--exclude="+dir)
@@ -38,10 +37,32 @@ func (r *Client) initialServerSync() (err error) {
 		args = append(args, "--rsync-path", "sudo -u "+r.settings.sudouser+" rsync")
 	}
 
-	// TODO: escaping of remote dir
 	//"--delete-excluded",
 	args = append(args, "-a", "--delete", sourceDir+"/", r.settings.host+":"+r.settings.dir+"/")
-	execOrPanic("rsync", args, r.stopCh)
+
+	command := exec.Command("rsync", args...)
+
+	go killOnStop(command, r.stopCh)
+	output, err := command.Output()
+
+	if err != nil {
+		escapedArgs := make([]string, len(args))
+		for i, arg := range args {
+			// since we'll use '' to escape arguments, we need to escape single quotes differently
+			arg = strings.Replace(arg, "'", "'\"'\"'", -1)
+			escapedArgs[i] = "'" + arg + "'"
+		}
+		stringCommand := "rsync " + strings.Join(escapedArgs, " ")
+		progressLn("Cannot perform initial sync. Please ensure that you can execute the following command:\n", stringCommand)
+
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			debugLn("rsync output:\n", string(output), "\nstderr:\n", string(exitErr.Stderr))
+		} else {
+			// actually, this is mostly impossible to have something different than exec.ExitError here
+			debugLn("rsync output:\n", string(output), "\nCannot get stderr!")
+		}
+		panic("Cannot perform initial sync")
+	}
 	return
 }
 

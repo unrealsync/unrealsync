@@ -81,28 +81,8 @@ func execOrPanic(cmd string, args []string, cancelCh chan bool) string {
 	command := exec.Command(cmd, args...)
 	command.Stderr = &bufErr
 
-	commandFinished := make(chan bool)
-	go func() {
-		for {
-			select {
-			case _, open := <-cancelCh:
-				if !open {
-					err := command.Process.Kill()
-					if err != nil {
-						progressLn("Could not kill process on cancel:", cmd, args)
-					}
-					return
-				}
-			case _, open := <-commandFinished:
-				if !open {
-					return
-				}
-			default:
-			}
-		}
-	}()
+	go killOnStop(command, cancelCh)
 	output, err := command.Output()
-	close(commandFinished)
 
 	if err != nil {
 		progressLn("Cannot ", cmd, " ", args, ", got error: ", err.Error())
@@ -111,6 +91,24 @@ func execOrPanic(cmd string, args []string, cancelCh chan bool) string {
 	}
 
 	return string(output)
+}
+
+func killOnStop(command *exec.Cmd, stopChannel chan bool) {
+	for {
+		select {
+		case <-stopChannel:
+			err := command.Process.Kill()
+			if err != nil {
+				progressLn("Could not kill process on cancel: ", err.Error())
+			}
+			return
+		default:
+		}
+		// state might be nil in the time before we call .Wait() or .Run()
+		if state := command.ProcessState; state != nil && state.Exited() {
+			return
+		}
+	}
 }
 
 func formatLength(len int) string {
