@@ -98,6 +98,10 @@ func (r *Client) startServer() {
 		unrealsyncBinaryPath = r.settings.remoteBinPath
 	} else if unrealsyncBinaryPath == "" || !isCompatibleVersions(unrealsyncVersion, version) {
 		unrealsyncBinaryPathForHost := unrealsyncDir + "/unrealsync-" + ostype + "-" + osarch
+		if _, err := os.Stat(unrealsyncBinaryPathForHost); os.IsNotExist(err) {
+			progressLn(unrealsyncBinaryPathForHost, " doesn't exists. Cannot find compatible unrealsync on remote and local hosts")
+			panic("cannot find unrealsync binary for remote host (" + unrealsyncBinaryPathForHost + ")")
+		}
 		r.copyUnrealsyncBinaries(unrealsyncBinaryPathForHost)
 		unrealsyncBinaryPath = r.settings.dir + "/.unrealsync/unrealsync"
 	}
