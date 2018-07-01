@@ -230,9 +230,19 @@ func pingReplyThread(stdout io.ReadCloser, hostname string, stream chan BufBlock
 			sendErrorNonBlocking(errorCh, errors.New("Could not read from server: "+hostname+" err:"+err.Error()))
 			break
 		}
+		actionStr := string(buf)
 		debugLn("Read ", readBytes, " from ", hostname, " ", buf)
-		stream <- bufBlocker
-		<-bufBlocker.sent
+		if actionStr == actionPing {
+			stream <- bufBlocker
+			<-bufBlocker.sent
+		} else if actionStr == actionStopServer {
+			currentProcess, err := os.FindProcess(os.Getpid())
+			if err != nil {
+				panic("Cannot find current process")
+			}
+			progressLn("Got StopServer command from the remote client")
+			currentProcess.Kill()
+		}
 	}
 }
 

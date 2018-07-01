@@ -8,11 +8,12 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
 const (
-	version = "1.0.5"
+	version = "1.0.6"
 
 	// Files stored in repo folder
 	defaultRepoDir        = ".unrealsync/"
@@ -25,13 +26,14 @@ const (
 	diffSep = "\n------------\n"
 
 	// all actions must be 10 symbols length
-	actionPing      = "PING      "
-	actionPong      = "PONG      "
-	actionDiff      = "DIFF      "
-	actionBigInit   = "BIGINIT   "
-	actionBigRcv    = "BIGRCV    "
-	actionBigCommit = "BIGCOMMIT "
-	actionBigAbort  = "BIGABORT  "
+	actionPing       = "PING      "
+	actionPong       = "PONG      "
+	actionDiff       = "DIFF      "
+	actionBigInit    = "BIGINIT   "
+	actionBigRcv     = "BIGRCV    "
+	actionBigCommit  = "BIGCOMMIT "
+	actionBigAbort   = "BIGABORT  "
+	actionStopServer = "STOPSERVER"
 
 	maxDiffSize           = 2 * 1024 * 1204
 	defaultConnectTimeout = 10
@@ -114,6 +116,10 @@ func writePidFileAndKillPrevious(pidFilename string) {
 
 		proc, err := os.FindProcess(pid)
 		if err == nil {
+			proc.Signal(syscall.SIGUSR1)
+			// give some time for process to stop normally
+			time.Sleep(250 * time.Millisecond)
+			// need this for back-compatibility. Need to drop with major version inc
 			proc.Kill()
 		}
 

@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -169,6 +171,7 @@ func applyThread(inStream io.ReadCloser) {
 		} else if actionStr == actionBigAbort {
 			processBigAbort(buf, bigFps)
 		} else if actionStr == actionPong {
+		} else if actionStr == actionStopServer {
 		} else {
 			debugLn("Unknown action", actionStr)
 		}
@@ -366,7 +369,18 @@ func doServer() {
 	go timeoutThread()
 	progressLn("Entering ping loop")
 	for {
-		os.Stdout.Write([]byte(actionPing))
-		time.Sleep(pingInterval)
+		signals := make(chan os.Signal, 1)
+		signal.Notify(signals, syscall.SIGUSR1)
+
+		pingTime := time.After(pingInterval)
+
+		select {
+		case <-pingTime:
+			pingTime = time.After(pingInterval)
+			os.Stdout.Write([]byte(actionPing))
+		case <-signals:
+			os.Stdout.Write([]byte(actionStopServer))
+			return
+		}
 	}
 }
