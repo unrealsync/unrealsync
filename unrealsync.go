@@ -64,6 +64,7 @@ var (
 	isServer         = false
 	isDebug          = false
 	isVersion        = false
+	isHelp           = false
 	hostname         = ""
 	excludesFlag     MultipleStringFlag
 	forceServersFlag = ""
@@ -71,15 +72,33 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&isVersion, "version", false, "Show version")
+	flag.BoolVar(&isHelp, "help", false, "Show help and exit")
+	flag.BoolVar(&isVersion, "version", false, "Show version and exit")
 	flag.BoolVar(&isDebug, "debug", false, "Turn on debugging information")
-	flag.BoolVar(&isServer, "server", false, "(internal) Internal parameter used on remote side")
-	flag.StringVar(&hostname, "hostname", "", "(internal) Internal parameter used on remote side")
 	flag.Var(&excludesFlag, "exclude", "Exclude specified path from sync. Also used as internal parameter on the remote side")
 	flag.StringVar(&forceServersFlag, "servers", "", "Perform sync only for specified servers")
 	flag.StringVar(&repoPath, "repo-path", "", "Store logs and pid file in specified folder")
 	flag.StringVar(&sudoUser, "sudo-user", "", "Use this user to store files on the remote side")
 	flag.BoolVar(&hashCheck, "hash-check", false, "Use md5 hashing to check if file content changed before syncing it")
+	// keep internal parameters to be the last; todo: find something to replace flag and hide internal from .PrintDefault()'s output
+	flag.BoolVar(&isServer, "server", false, "(internal) Internal parameter used on remote side")
+	flag.StringVar(&hostname, "hostname", "", "(internal) Internal parameter used on remote side")
+}
+
+func printHelp() {
+	fmt.Println("unrealsync is utility that can perform synchronization between several servers")
+	fmt.Println()
+	fmt.Println("usage: unrealsync [<options>] <local directory> [<server>:<remote directory>] [<user>@<server>:<remote directory>]")
+	fmt.Println("                  <directory> - directory to sync")
+	fmt.Println()
+	fmt.Println("You may specify as many remote directories as you need")
+	fmt.Println()
+	fmt.Println("Available options are:")
+	flag.PrintDefaults()
+	fmt.Println()
+	fmt.Println("Unrealsync also supports per-folder config files. To find out more read Config section at https://github.com/unrealsync/unrealsync")
+
+	// todo make better help
 }
 
 func initUnrealsyncDir() string {
@@ -146,7 +165,10 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 
-	if isVersion {
+	if isHelp {
+		printHelp()
+		os.Exit(0)
+	} else if isVersion {
 		fmt.Println(version)
 		os.Exit(0)
 	} else if len(args) > 0 {
@@ -191,6 +213,9 @@ func main() {
 			}
 			servers[serverSettings.host] = serverSettings
 		}
+	} else {
+		fmt.Fprintf(os.Stderr, "ERR: You should specify directory to sync\nTry unrealsync --help for more information\n")
+		os.Exit(123)
 	}
 
 	unrealsyncDir = initUnrealsyncDir()
