@@ -23,8 +23,6 @@ type (
 	}
 )
 
-var excludes map[string]bool
-
 func applyDiff(buf []byte) {
 	var (
 		sepBytes = []byte(diffSep)
@@ -361,10 +359,12 @@ func timeoutThread() {
 }
 
 func doServer() {
-	excludes = make(map[string]bool)
+	excludes := make(map[string]bool)
 	for _, dir := range excludesFlag {
 		excludes[dir] = true
 	}
+	// todo we need to take this excludes into account further. THEY ARE NOT USED
+
 	go applyThread(os.Stdin)
 	go timeoutThread()
 	progressLn("Entering ping loop")

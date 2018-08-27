@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	repo         map[string]map[string]*UnrealStat
+	repo         *Repository
 	localDiff    [maxDiffSize]byte
 	localDiffPtr int
 )
@@ -58,10 +58,10 @@ func commitBigFile(fileStr string, stat *UnrealStat) {
 	defer fp.Close()
 
 	dir := filepath.Dir(fileStr)
-	if _, ok := repo[dir]; !ok {
-		repo[dir] = make(map[string]*UnrealStat)
+	if !repo.HasDir(dir) {
+		repo.AddDir(dir)
 	}
-	repo[dir][filepath.Base(fileStr)] = stat
+	repo.AddFileToDir(dir, filepath.Base(fileStr), stat)
 
 	file := []byte(fileStr)
 
@@ -189,14 +189,14 @@ func addToDiff(file string, stat *UnrealStat) {
 	return
 }
 
-func aggregateDirs(dirschan chan string, excludes map[string]bool) {
+func aggregateDirs(dirschan chan string) {
 	dirs := make(map[string]bool)
 	tick := time.Tick(dirAggregateInterval)
 
 	for {
 		select {
 		case dir := <-dirschan:
-			if dir, err := getPathToSync(dir, excludes); err == nil {
+			if dir, err := getPathToSync(dir); err == nil {
 				dirs[dir] = true
 			}
 
@@ -215,7 +215,7 @@ func aggregateDirs(dirschan chan string, excludes map[string]bool) {
 	}
 }
 
-func getPathToSync(path string, excludes map[string]bool) (string, error) {
+func getPathToSync(path string) (string, error) {
 	var err error
 	if filepath.IsAbs(path) {
 		path, err = filepath.Rel(sourceDir, path)
@@ -236,22 +236,10 @@ func getPathToSync(path string, excludes map[string]bool) (string, error) {
 	} else if !stat.IsDir() {
 		path = filepath.Dir(path)
 	}
-	if pathIsGlobalExcluded(path, excludes) {
+	if repo.IsPathExcluded(path) {
 		return "", errors.New("excluded folder change")
 	}
 	return path, nil
-}
-
-func pathIsGlobalExcluded(path string, excludes map[string]bool) bool {
-	if strings.HasPrefix(path, ".unrealsync") {
-		return true
-	}
-	for exclude := range excludes {
-		if strings.HasPrefix(path, exclude) {
-			return true
-		}
-	}
-	return false
 }
 
 func syncDir(dir string, recursive, sendChanges bool) {
@@ -281,12 +269,11 @@ func syncDir(dir string, recursive, sendChanges bool) {
 		return
 	}
 
-	repoInfo, ok := repo[dir]
-	if !ok {
+	if !repo.HasDir(dir) {
 		debugLn("No dir ", dir, " in repo")
-		repoInfo = make(map[string]*UnrealStat)
-		repo[dir] = repoInfo
+		repo.AddDir(dir)
 	}
+	repoInfo := repo.GetDirStat(dir)
 
 	// Detect deletions: we need to do it first because otherwise change from dir to file will be impossible
 	for name := range repoInfo {
@@ -316,6 +303,9 @@ func syncDir(dir string, recursive, sendChanges bool) {
 		for _, info := range res {
 			repoEl, ok := repoInfo[info.Name()]
 			filePath := filepath.Join(dir, info.Name())
+			if repo.IsPathExcluded(filePath) {
+				continue
+			}
 			unrealStat := UnrealStatFromStat(filepath.Join(dir, info.Name()), info)
 
 			if !ok || !StatsEqual(unrealStat, *repoEl) {
@@ -339,9 +329,7 @@ func syncDir(dir string, recursive, sendChanges bool) {
 		}
 	}
 
-	repo[dir] = repoInfo
-
-	return
+	repo.SetDirStat(dir, repoInfo)
 }
 
 func pingThread() {
@@ -356,7 +344,7 @@ func doClient(servers map[string]Settings, globalExcludes map[string]bool) {
 		servers, globalExcludes = parseConfig()
 	}
 
-	repo = make(map[string]map[string]*UnrealStat)
+	repo = NewRepository(globalExcludes)
 
 	clients := make(map[string]*Client)
 	for key, settings := range servers {
@@ -375,5 +363,5 @@ func doClient(servers map[string]Settings, globalExcludes map[string]bool) {
 
 	// read watcher
 	progressLn("Entering watcher loop")
-	aggregateDirs(dirschan, globalExcludes)
+	aggregateDirs(dirschan)
 }
