@@ -72,6 +72,10 @@ func parseServerSettings(section string, serverSettings map[string]string, exclu
 	batchMode := serverSettings["batchmode"] != "false"
 	compression := serverSettings["compression"] != "false"
 
+	if _, ok := serverSettings["dir"]; !ok {
+		fatalLn("ERR: Cannot start sync for section ", section, ". Remote dir is not specified neither in it nor in general section")
+	}
+
 	return Settings{
 		localExcludes,
 		serverSettings["username"],
