@@ -127,17 +127,19 @@ func openOutLogForRead(hostname string, continuation bool) (err error) {
 	return
 }
 
-func doSendChanges(stream chan BufBlocker, hostname string, stopChan chan bool, errorCh chan error) {
+func doSendChanges(stream chan BufBlocker, client *Client) {
 	var err error
 	buf := make([]byte, maxDiffSize+20) // maxDiffSize limits only diff itself, so extra action+len required, each 10 bytes
 	var pos int64
 	var bufLen int
 	bufBlocker := BufBlocker{buf: buf, sent: make(chan bool)}
 
+	hostname := client.settings.host
+
 doSendChangesLoop:
 	for {
 		select {
-		case <-stopChan:
+		case <-client.stopCh:
 			progressLn("Got stop sendChanges")
 			break doSendChangesLoop
 		default:
@@ -158,32 +160,32 @@ doSendChangesLoop:
 		if err == io.EOF {
 			err = openOutLogForRead(hostname, false)
 			if err != nil {
-				sendErrorNonBlocking(errorCh, err)
+				sendErrorNonBlocking(client.errorCh, err)
 				break
 			}
 			continue
 		}
 		if err != nil {
-			sendErrorNonBlocking(errorCh, err)
+			sendErrorNonBlocking(client.errorCh, err)
 			break
 		}
 
 		pos, err = fp.Seek(0, io.SeekCurrent)
 		if err != nil {
-			sendErrorNonBlocking(errorCh, err)
+			sendErrorNonBlocking(client.errorCh, err)
 			break
 		}
 
 		bufBlocker.buf = buf[0:bufLen]
 		select {
 		case stream <- bufBlocker:
-		case <-stopChan:
+		case <-client.stopCh:
 			progressLn("Got stop sendChanges2")
 			break doSendChangesLoop
 		}
 		select {
 		case <-bufBlocker.sent:
-		case <-stopChan:
+		case <-client.stopCh:
 			progressLn("Got stop sendChanges3")
 			break doSendChangesLoop
 		}

@@ -4,13 +4,13 @@ import "strings"
 
 type Repository struct {
 	stats    map[string]map[string]*UnrealStat
-	Excludes map[string]bool
+	excludes map[string]bool
 }
 
 func NewRepository(excludes map[string]bool) *Repository {
 	return &Repository{
 		stats:    make(map[string]map[string]*UnrealStat),
-		Excludes: excludes,
+		excludes: excludes,
 	}
 }
 
@@ -44,7 +44,7 @@ func (r *Repository) IsPathExcluded(path string) bool {
 	if strings.HasPrefix(path, ".unrealsync") { // todo: don't we have it in excludes always?
 		return true
 	}
-	for exclude := range r.Excludes {
+	for exclude := range r.excludes {
 		if strings.HasPrefix(path, exclude) {
 			return true
 		}

@@ -134,7 +134,7 @@ func (r *Client) startServer() {
 	go singleStdinWriter(stream, stdin, r.errorCh, r.stopCh)
 	// read log and send into ssh stdin via singlestdinwriter (stream)
 	// stops if stopChan closes and closes stream
-	go doSendChanges(stream, r.settings.host, r.stopCh, r.errorCh)
+	go doSendChanges(stream, r)
 	// read ssh stdout and send into ssh stdin via singlestdinwriter (stream)
 	go pingReplyThread(stdout, r.settings.host, stream, r.errorCh)
 
