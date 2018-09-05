@@ -102,11 +102,11 @@ func killOnStop(command *exec.Cmd, stopChannel chan bool) {
 				progressLn("Could not kill process on cancel: ", err.Error())
 			}
 			return
-		default:
-		}
-		// state might be nil in the time before we call .Wait() or .Run()
-		if state := command.ProcessState; state != nil && state.Exited() {
-			return
+		case <-time.After(time.Second):
+			// state might be nil in the time before we call .Wait() or .Run()
+			if state := command.ProcessState; state != nil && state.Exited() {
+				return
+			}
 		}
 	}
 }
