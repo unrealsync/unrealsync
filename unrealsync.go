@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	version = "1.0.9"
+	version = "1.0.10"
 
 	// Files stored in repo folder
 	defaultRepoDir        = ".unrealsync/"
