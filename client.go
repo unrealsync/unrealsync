@@ -240,7 +240,7 @@ func pingReplyThread(stdout io.ReadCloser, hostname string, stream chan BufBlock
 			if err != nil {
 				panic("Cannot find current process")
 			}
-			progressLn("Got StopServer command from the remote client")
+			progressLn("Got StopServer command from the remote client ", hostname)
 			currentProcess.Kill()
 		}
 	}
