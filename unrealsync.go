@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	version = "1.0.10"
+	version = "1.0.11"
 
 	// Files stored in repo folder
 	defaultRepoDir        = ".unrealsync/"
@@ -60,6 +60,7 @@ var (
 	unrealsyncDir    string
 	repoPath         string
 	sudoUser         string
+	remoteBinPath    string
 	rcvchan          = make(chan bool)
 	isServer         = false
 	isDebug          = false
@@ -79,6 +80,7 @@ func init() {
 	flag.StringVar(&forceServersFlag, "servers", "", "Perform sync only for specified servers")
 	flag.StringVar(&repoPath, "repo-path", "", "Store logs and pid file in specified folder")
 	flag.StringVar(&sudoUser, "sudo-user", "", "Use this user to store files on the remote side")
+	flag.StringVar(&remoteBinPath, "remote-bin-path", "", "Specify the unrealsync path to run on remote side")
 	flag.BoolVar(&hashCheck, "hash-check", false, "Use md5 hashing to check if file content changed before syncing it")
 	// keep internal parameters to be the last; todo: find something to replace flag and hide internal from .PrintDefault()'s output
 	flag.BoolVar(&isServer, "server", false, "(internal) Internal parameter used on remote side")
@@ -204,6 +206,9 @@ func main() {
 			}
 			if len(sudoUser) > 0 {
 				serverSettings.sudouser = sudoUser
+			}
+			if len(remoteBinPath) > 0 {
+				serverSettings.remoteBinPath = remoteBinPath
 			}
 			if len(globalExcludes) > 0 {
 				serverSettings.excludes = make(map[string]bool)
