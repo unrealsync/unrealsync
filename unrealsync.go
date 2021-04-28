@@ -242,7 +242,7 @@ func main() {
 	for _, dir := range []string{repoPath, tmpFolder} {
 		_, err = os.Stat(dir)
 		if err != nil {
-			err = os.Mkdir(dir, 0777)
+			err = os.Mkdir(dir, 0755)
 			if err != nil {
 				fatalLn("Cannot create " + dir + ": " + err.Error())
 			}

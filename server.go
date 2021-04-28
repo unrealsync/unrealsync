@@ -185,7 +185,7 @@ func tmpBigName(filename string) string {
 func processBigInit(buf []byte, bigFps map[string]BigFile) {
 	filename := string(buf)
 	tmpName := tmpBigName(filename)
-	fp, err := os.OpenFile(tmpName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	fp, err := os.OpenFile(tmpName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		panic("Cannot open tmp file " + tmpName + ": " + err.Error())
 	}
@@ -244,7 +244,7 @@ func processBigCommit(buf []byte, bigFps map[string]BigFile) {
 		panic("Cannot set mtime for " + bigFile.tmpName + ": " + err.Error())
 	}
 
-	os.MkdirAll(filepath.Dir(filename), 0777)
+	os.MkdirAll(filepath.Dir(filename), 0755)
 	if err = os.Rename(bigFile.tmpName, filename); err != nil {
 		panic("Cannot rename " + bigFile.tmpName + " to " + filename + ": " + err.Error())
 	}
@@ -283,7 +283,7 @@ func writeContents(file string, unrealStat UnrealStat, contents []byte) {
 	}
 
 	if unrealStat.isDir {
-		if err = os.MkdirAll(file, 0777); err != nil {
+		if err = os.MkdirAll(file, 0755); err != nil {
 			progressLn("Cannot create dir ", file, ": ", err.Error())
 			return
 		}
@@ -326,7 +326,7 @@ func writeFile(file string, unrealStat UnrealStat, contents []byte) {
 	fp.Close()
 
 	dir := path.Dir(file)
-	if err = os.MkdirAll(dir, 0777); err != nil {
+	if err = os.MkdirAll(dir, 0755); err != nil {
 		progressLn("Cannot create dir ", dir, ": ", err.Error())
 		os.Remove(tempnam)
 		return
