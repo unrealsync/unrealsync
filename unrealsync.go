@@ -7,13 +7,14 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 )
 
 const (
-	version = "1.0.11"
+	version = "1.0.13"
 
 	// Files stored in repo folder
 	defaultRepoDir        = ".unrealsync/"
@@ -216,7 +217,21 @@ func main() {
 					serverSettings.excludes[k] = v
 				}
 			}
-			servers[serverSettings.host] = serverSettings
+
+			// we need this to make it possible to sync to multiple directories on a single remote host
+			section := serverSettings.host
+			adj := 0
+			for {
+				if _, ok := servers[section]; ok {
+					// section collision, we need to adjust the section name
+					adj++
+					section = serverSettings.host + "." + strconv.Itoa(adj)
+				} else {
+					break
+				}
+			}
+			serverSettings.section = section
+			servers[section] = serverSettings
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "ERR: You should specify directory to sync\nTry unrealsync --help for more information\n")

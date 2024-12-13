@@ -12,6 +12,8 @@ import (
 const generalSection = "general_settings"
 
 type Settings struct {
+	// section names should be unique, and it's the way to identify server in the code
+	section  string
 	excludes map[string]bool
 	username string
 	sudouser string
@@ -77,6 +79,7 @@ func parseServerSettings(section string, serverSettings map[string]string, exclu
 	}
 
 	return Settings{
+		section,
 		localExcludes,
 		serverSettings["username"],
 		serverSettings["sudouser"],

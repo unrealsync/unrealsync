@@ -29,7 +29,7 @@ func (r *Client) initialServerSync() (err error) {
 		args = append(args, "--exclude="+dir)
 	}
 
-	err = openOutLogForRead(r.settings.host, true)
+	err = openOutLogForRead(r.settings.section, true)
 	if err != nil {
 		return
 	}

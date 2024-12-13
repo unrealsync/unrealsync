@@ -89,41 +89,41 @@ func createOutLog() {
 	if err != nil {
 		fatalLn("Cannot open ", logFilePath, ": ", err.Error())
 	}
-	for hostname := range outLogReadOldSize {
+	for section := range outLogReadOldSize {
 		// invalidate readers
-		outLogReadOldSize[hostname] = outLogPos
+		outLogReadOldSize[section] = outLogPos
 	}
 	outLogPos = 0
 }
 
-func openOutLogForRead(hostname string, continuation bool) (err error) {
+func openOutLogForRead(section string, continuation bool) (err error) {
 	outLogMutex.Lock()
 	defer outLogMutex.Unlock()
-	fp, ok := outLogReadFps[hostname]
+	fp, ok := outLogReadFps[section]
 	if ok {
-		progressLn("Closing old log fp for ", hostname)
+		progressLn("Closing old log fp for ", section)
 		err = fp.Close()
 		if err != nil {
 			return
 		}
 	}
-	progressLn("Opening log for ", hostname)
+	progressLn("Opening log for ", section)
 	fp, err = os.Open(getLogFilePath(repoLogFilename))
 	if err != nil {
 		return
 	}
-	outLogReadFps[hostname] = fp
+	outLogReadFps[section] = fp
 
 	if continuation {
 		_, err = fp.Seek(outLogPos, io.SeekStart)
 		if err != nil {
 			return
 		}
-		outLogReadPos[hostname] = outLogPos
+		outLogReadPos[section] = outLogPos
 	} else {
-		outLogReadPos[hostname] = 0
+		outLogReadPos[section] = 0
 	}
-	outLogReadOldSize[hostname] = 0
+	outLogReadOldSize[section] = 0
 	return
 }
 
@@ -134,7 +134,7 @@ func doSendChanges(stream chan BufBlocker, client *Client) {
 	var bufLen int
 	bufBlocker := BufBlocker{buf: buf, sent: make(chan bool)}
 
-	hostname := client.settings.host
+	section := client.settings.section
 
 doSendChangesLoop:
 	for {
@@ -146,9 +146,9 @@ doSendChangesLoop:
 		}
 		outLogMutex.Lock()
 		localOutLogPos := outLogPos
-		localOldSize := outLogReadOldSize[hostname]
-		localReadPos := outLogReadPos[hostname]
-		fp := outLogReadFps[hostname]
+		localOldSize := outLogReadOldSize[section]
+		localReadPos := outLogReadPos[section]
+		fp := outLogReadFps[section]
 		outLogMutex.Unlock()
 
 		if localReadPos == localOutLogPos && localOldSize == 0 {
@@ -158,7 +158,7 @@ doSendChangesLoop:
 
 		bufLen, err = readLogEntry(fp, buf)
 		if err == io.EOF {
-			err = openOutLogForRead(hostname, false)
+			err = openOutLogForRead(section, false)
 			if err != nil {
 				sendErrorNonBlocking(client.errorCh, err)
 				break
@@ -190,9 +190,9 @@ doSendChangesLoop:
 			break doSendChangesLoop
 		}
 		outLogMutex.Lock()
-		outLogReadPos[hostname] = pos
+		outLogReadPos[section] = pos
 		outLogMutex.Unlock()
-		debugLn("hostname:", hostname, " pos:", pos, " after reading", string(buf[0:10]))
+		debugLn("section:", section, " pos:", pos, " after reading", string(buf[0:10]))
 	}
 }
 
@@ -204,19 +204,19 @@ func printStatusThread(clients map[string]*Client) {
 		statuses := make([]string, 0)
 
 		outLogMutex.Lock()
-		for hostname, oldSize := range outLogReadOldSize {
+		for section, oldSize := range outLogReadOldSize {
 			if oldSize != 0 {
-				sendQueueSize = oldSize - outLogReadPos[hostname] + outLogPos
-				statuses = append(statuses, hostname+" "+formatLength(int(sendQueueSize))+"*")
-			} else if outLogReadPos[hostname] != outLogPos {
-				sendQueueSize = outLogPos - outLogReadPos[hostname]
-				statuses = append(statuses, hostname+" "+formatLength(int(sendQueueSize)))
+				sendQueueSize = oldSize - outLogReadPos[section] + outLogPos
+				statuses = append(statuses, section+" "+formatLength(int(sendQueueSize))+"*")
+			} else if outLogReadPos[section] != outLogPos {
+				sendQueueSize = outLogPos - outLogReadPos[section]
+				statuses = append(statuses, section+" "+formatLength(int(sendQueueSize)))
 			} else {
 				sendQueueSize = 0
 			}
-			if err := clients[hostname].notifySendQueueSize(sendQueueSize); err != nil {
-				progressLn("removing " + hostname + " from outLogReadOldSize")
-				delete(outLogReadOldSize, hostname)
+			if err := clients[section].notifySendQueueSize(sendQueueSize); err != nil {
+				progressLn("removing " + section + " from outLogReadOldSize")
+				delete(outLogReadOldSize, section)
 			}
 		}
 		outLogMutex.Unlock()
