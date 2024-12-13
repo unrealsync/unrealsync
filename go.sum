@@ -4,3 +4,5 @@ github.com/ryanuber/go-glob v0.0.0-20170128012129-256dc444b735 h1:7YvPJVmEeFHR1T
 github.com/ryanuber/go-glob v0.0.0-20170128012129-256dc444b735/go.mod h1:807d1WSdnB0XRJzKNil9Om6lcp/3a0v4qIHxIXzX/Yc=
 github.com/unrealsync/fswatcher v0.0.0-20181203100244-53f7a0c2c947 h1:JrMpeYu4+1R0ZYn2Aihs54ONpa92Sp+QQZFJIge7V+I=
 github.com/unrealsync/fswatcher v0.0.0-20181203100244-53f7a0c2c947/go.mod h1:zSSP1WlnMrGVe5/6RhRwWEB04I/wtSu1Bq2hAwQNYPY=
+github.com/unrealsync/fswatcher v0.1.0 h1:gJINLuF4ATtutOOO7iBXqswq8qwxXM9f71qT82bZs3s=
+github.com/unrealsync/fswatcher v0.1.0/go.mod h1:057D4T8AZPHl82KH9ReHg5AZXlG71WD+UbLUuPF3Jy8=
